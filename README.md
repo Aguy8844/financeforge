@@ -12,6 +12,8 @@ Die öffentliche Demo nutzt fiktive Vorführdaten und speichert nichts in deinem
 - Deutsche Demo: https://aguy8844.github.io/financeforge/?demo=1&app=de
 - English demo: https://aguy8844.github.io/financeforge/?demo=1&app=en
 
+Falls die Demo noch `404` zeigt: In GitHub unter `Settings` -> `Pages` als Source `Deploy from a branch`, Branch `gh-pages`, Ordner `/ (root)` auswählen. Der Workflow aktualisiert diesen Branch automatisch.
+
 ## Download
 
 Sobald ein Release veröffentlicht ist, kannst du FinanceForge hier herunterladen:
