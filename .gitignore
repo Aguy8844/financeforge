@@ -1,0 +1,11 @@
+node_modules
+dist
+dist-de
+dist-en
+release
+.env
+*.local
+*.log
+*.pid
+.financeforge-dev.*
+.DS_Store

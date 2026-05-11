@@ -1,0 +1,51 @@
+name: Build release downloads
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build German app
+        run: npm run build:de
+
+      - name: Build English app
+        run: npm run build:en
+
+      - name: Package downloads
+        run: |
+          mkdir -p release
+          cp README.md dist-de/README.md
+          cp README.md dist-en/README.md
+          cd dist-de && zip -qr ../release/financeforge-de.zip .
+          cd ../dist-en && zip -qr ../release/financeforge-en.zip .
+
+      - name: Upload release assets
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" release/*.zip --clobber
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: financeforge-downloads
+          path: release/*.zip
