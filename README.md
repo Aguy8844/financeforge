@@ -87,11 +87,16 @@ financeforge-en.zip
 
 ## GitHub Pages Preview
 
-1. Neues GitHub-Repository erstellen, z. B. `financeforge`.
+1. Repository öffnen:
+
+```text
+https://github.com/Aguy8844/financeforge
+```
+
 2. Lokales Repository pushen:
 
 ```powershell
-git remote add origin https://github.com/DEIN-USER/financeforge.git
+git remote add origin https://github.com/Aguy8844/financeforge.git
 git branch -M main
 git push -u origin main
 ```
@@ -102,19 +107,19 @@ git push -u origin main
 6. Die Preview ist danach unter dieser Form erreichbar:
 
 ```text
-https://DEIN-USER.github.io/financeforge/?demo=1
+https://aguy8844.github.io/financeforge/?demo=1
 ```
 
 Deutsch:
 
 ```text
-https://DEIN-USER.github.io/financeforge/?demo=1&app=de
+https://aguy8844.github.io/financeforge/?demo=1&app=de
 ```
 
 English:
 
 ```text
-https://DEIN-USER.github.io/financeforge/?demo=1&app=en
+https://aguy8844.github.io/financeforge/?demo=1&app=en
 ```
 
 ## Öffentliche Downloads über GitHub Releases
@@ -129,7 +134,7 @@ Diese Dateien werden an das Release angehängt und sind öffentlich herunterladb
 Damit die Download-Buttons auf der Demo-Startseite direkt auf dein Repository zeigen, kannst du in GitHub unter `Settings` -> `Secrets and variables` -> `Actions` oder lokal in einer `.env` setzen:
 
 ```env
-VITE_REPOSITORY_URL=https://github.com/DEIN-USER/financeforge
+VITE_REPOSITORY_URL=https://github.com/Aguy8844/financeforge
 ```
 
 Auf GitHub Pages versucht die Demo den Repository-Link außerdem automatisch aus der Pages-URL abzuleiten.
