@@ -1,162 +1,126 @@
 # FinanceForge
 
-FinanceForge ist eine lokale, offene persönliche Finanz-App für Einnahmen, Ausgaben, Budgets, Sparziele, Vermögenskonten, Projektionen und Erinnerungen.
+FinanceForge ist eine lokale, offene Finanz-App für Menschen, die Einnahmen, Ausgaben, Budgets, Sparziele, Konten und Zukunftsprojektionen selbst verwalten möchten.
 
-Die App läuft im Browser auf dem eigenen PC. Es gibt keine Cloud-Speicherung, keine Trackingdienste, keine echten Bankzugänge, keinen Login, keine Paywall und keine Payment-Integration.
+Die App läuft auf deinem eigenen Gerät. Es gibt keine Cloud-Speicherung, kein Tracking, keine Bankzugänge, keinen Login, keine Paywall und keine Payment-Integration.
 
-## Open-Source-Hinweis
+## Direkt Ausprobieren
 
-FinanceForge ist als öffentlich herunterladbares Open-Source-Projekt gedacht. Der Code darf lokal geprüft, angepasst und selbst gebaut werden. Die enthaltene öffentliche Demo nutzt ausschließlich fiktive Vorführdaten.
+Die öffentliche Demo nutzt fiktive Vorführdaten und speichert nichts in deinem Browser:
 
-Dieses Projekt wurde mit KI-Unterstützung erstellt und anschließend vom Projektinhaber geprüft.
+- Demo-Startseite: https://aguy8844.github.io/financeforge/?demo=1
+- Deutsche Demo: https://aguy8844.github.io/financeforge/?demo=1&app=de
+- English demo: https://aguy8844.github.io/financeforge/?demo=1&app=en
 
-## Tech Stack
+## Download
 
-- React + Vite + TypeScript
-- Tailwind CSS
-- Recharts
-- lucide-react
-- IndexedDB mit localStorage-Fallback
+Sobald ein Release veröffentlicht ist, kannst du FinanceForge hier herunterladen:
 
-## Lokal Starten
+- Releases: https://github.com/Aguy8844/financeforge/releases
+- Deutsche Version: https://github.com/Aguy8844/financeforge/releases/latest/download/financeforge-de.zip
+- English version: https://github.com/Aguy8844/financeforge/releases/latest/download/financeforge-en.zip
+
+Wenn noch kein Release verfügbar ist, kannst du oben auf `Code` -> `Download ZIP` klicken und die App aus dem Quellcode starten.
+
+## Start Für Normale Nutzer
+
+### Variante A: Release-ZIP
+
+1. Lade `financeforge-de.zip` oder `financeforge-en.zip` aus den Releases herunter.
+2. Entpacke die ZIP-Datei.
+3. Öffne unter Windows `start-financeforge.bat`.
+4. FinanceForge startet lokal unter:
+
+```text
+http://127.0.0.1:5173
+```
+
+Hinweis: Die Release-ZIP enthält eine fertige statische Web-App. Der Start über `start-financeforge.bat` verwendet Python als kleinen lokalen Webserver. Falls Python nicht installiert ist, kannst du den entpackten Ordner auch mit jedem anderen lokalen Webserver starten.
+
+### Variante B: Quellcode Starten
+
+Voraussetzung: Node.js ist installiert.
 
 ```powershell
 npm.cmd install
 npm.cmd run dev
 ```
 
-Frontend:
+Danach öffnest du:
 
 ```text
 http://127.0.0.1:5173
 ```
 
-Der Dev-Server ist bewusst auf Port `5173` fixiert, damit die lokale URL stabil bleibt.
+## Was FinanceForge Lokal Speichert
 
-## Öffentliche Demo
+FinanceForge speichert deine Daten lokal im Browser über IndexedDB mit localStorage-Fallback. Deine Finanzdaten verlassen dein Gerät nicht.
 
-Lokale Demo-Startseite:
+Gespeichert werden können:
 
-```text
-http://127.0.0.1:5173/demo
-```
+- Einstellungen
+- Einnahmen
+- Ausgaben
+- Budgets
+- Sparziele
+- Vermögenskonten
+- Eigenüberweisungen
+- Kategorien und Quick-Tags
+- Monatsabschlüsse
+- lokale Erinnerungen
 
-Direkte App-Demos:
+## Daten Exportieren, Importieren Und Löschen
 
-```text
-http://127.0.0.1:5173/demo/de
-http://127.0.0.1:5173/demo/en
-```
+In den Einstellungen kannst du:
 
-Für statische Hosts wie GitHub Pages funktionieren zusätzlich:
+- alle Daten als JSON exportieren
+- ein JSON-Backup importieren
+- Startdaten laden
+- lokale Finanzdaten löschen
 
-```text
-?demo=1
-?demo=1&app=de
-?demo=1&app=en
-```
+Beim Import wird nichts still überschrieben. Die App fragt vorher nach Bestätigung.
 
-Die Demo ist ein Klon der echten App-Oberfläche mit fiktiven Daten. Sie liest keine lokalen FinanceForge-Daten und schreibt nichts in IndexedDB oder localStorage.
+## Datenschutz Und Privatsphäre
 
-## Deutsche und Englische Builds
+- 100 % lokale Datenspeicherung
+- keine Cloud-Synchronisierung
+- keine externen Trackingdienste
+- keine echten Bankzugänge
+- keine sensiblen API-Keys im Frontend
+- keine E-Mail- oder SMTP-Funktion
+- keine Accounts, kein Login, keine Paywall
 
-Deutsche Version bauen:
+Die Demo im Web nutzt nur fiktive Daten. Sie ist nicht mit deinen lokalen FinanceForge-Daten verbunden.
 
-```powershell
-npm.cmd run build:de
-```
+## Enthaltene Funktionen
 
-Englische Version bauen:
-
-```powershell
-npm.cmd run build:en
-```
-
-Release-ZIP-Dateien unter Windows erstellen:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
-```
-
-Danach liegen diese Dateien in `release/`:
-
-```text
-financeforge-de.zip
-financeforge-en.zip
-```
-
-## GitHub Pages Preview
-
-1. Repository öffnen:
-
-```text
-https://github.com/Aguy8844/financeforge
-```
-
-2. Lokales Repository pushen:
-
-```powershell
-git remote add origin https://github.com/Aguy8844/financeforge.git
-git branch -M main
-git push -u origin main
-```
-
-3. In GitHub öffnen: `Settings` -> `Pages`.
-4. Als Source `GitHub Actions` auswählen.
-5. Nach dem Push läuft `.github/workflows/pages.yml`.
-6. Die Preview ist danach unter dieser Form erreichbar:
-
-```text
-https://aguy8844.github.io/financeforge/?demo=1
-```
-
-Deutsch:
-
-```text
-https://aguy8844.github.io/financeforge/?demo=1&app=de
-```
-
-English:
-
-```text
-https://aguy8844.github.io/financeforge/?demo=1&app=en
-```
-
-## Öffentliche Downloads über GitHub Releases
-
-Wenn du ein GitHub Release veröffentlichst, baut `.github/workflows/release.yml` automatisch:
-
-- `financeforge-de.zip`
-- `financeforge-en.zip`
-
-Diese Dateien werden an das Release angehängt und sind öffentlich herunterladbar.
-
-Damit die Download-Buttons auf der Demo-Startseite direkt auf dein Repository zeigen, kannst du in GitHub unter `Settings` -> `Secrets and variables` -> `Actions` oder lokal in einer `.env` setzen:
-
-```env
-VITE_REPOSITORY_URL=https://github.com/Aguy8844/financeforge
-```
-
-Auf GitHub Pages versucht die Demo den Repository-Link außerdem automatisch aus der Pages-URL abzuleiten.
-
-## Datenschutz und Privatsphäre
-
-- Finanzdaten werden lokal im Browser gespeichert.
-- Keine Cloud-Synchronisierung.
-- Keine externen Trackingdienste.
-- Keine echten Bankzugänge.
-- Keine sensiblen API-Keys im Frontend.
-- JSON-Export und JSON-Import bleiben vollständig lokal.
-- Daten können in den Einstellungen gelöscht oder über Browserdaten entfernt werden.
+- Dashboard mit Monatszahlen, Warnungen und Charts
+- Einnahmenverwaltung
+- Ausgabenverwaltung
+- Budgets mit Warnstufen
+- Sparziele mit Prioritäten und Ziel-Fortschritt
+- mehrere Vermögenskonten
+- Eigenüberweisungen zwischen Konten
+- Tages-Tracking als Linechart
+- Tages-Einnahmen/Ausgaben-Säulenstatistik
+- Kontostand-Verlauf pro Tag
+- Spending Score und Ausgaben-Coach
+- Fixkosten vs. variable Ausgaben
+- Ausgaben-Review: notwendig, okay, unnötig
+- Zukunftsprojektion mit Kapitalzufluss, Zinsen, Entnahme und Reinvestition
+- lokale Erinnerungen und optionale Browser Notifications
+- JSON Import/Export
+- Monatsabschluss mit automatisch generiertem Kommentar
+- deutsche und englische Build-Version
 
 ## Windows-Autostart
 
-Im Projekt liegen zwei Starter:
+Wenn du FinanceForge aus dem Quellcode startest, liegen im Projekt zwei Starter:
 
-- `start-financeforge.bat`: startet FinanceForge sichtbar in einem Terminal.
+- `start-financeforge.bat`: startet FinanceForge sichtbar im Terminal.
 - `start-financeforge-hidden.vbs`: startet FinanceForge versteckt im Hintergrund.
 
-Autostart-Ordner:
+Autostart einrichten:
 
 1. `Win + R`
 2. `shell:startup`
@@ -164,27 +128,40 @@ Autostart-Ordner:
 
 Danach ist FinanceForge nach dem Windows-Login unter `http://127.0.0.1:5173` erreichbar.
 
-## Enthaltene Features
+## Für Entwickler
 
-- Dashboard mit Monatszahlen, Warnungen und Charts
-- Spending Score mit Budgettempo, No-Spend-Tagen, flexiblen Ausgaben, Sparquote und Ausgaben-Review
-- Tages-Tracking als Linechart
-- Tages-Einnahmen/Ausgaben-Säulenstatistik
-- Kontostand-Verlauf pro Tag für Privatkonto, Sparkonto und Gesamtvermögen
-- Wochenansicht für Einnahmen, Ausgaben und Netto
-- Heute-darf-ich-ausgeben Anzeige
-- Schnell-Sparen per Eigenüberweisung aufs Sparkonto
-- Mehrere Vermögenskonten mit Plus-Kachel
-- Einmalige und wiederkehrende Einnahmen
-- Einmalige und wiederkehrende Ausgaben
-- Ausgaben-Review: notwendig, okay, unnötig
-- Fixkosten vs. variable Ausgaben
-- Budgetübersicht mit Warnstufen
-- Sparziele mit Prioritäten und Verteilung
-- Zukunftsprojektion mit Kapitalzufluss, Zinsen, Entnahme und Reinvestition
-- Lokale Erinnerungen und optional Browser Notifications
-- Einstellungen, Kategorien, Quick-Tags, JSON Import/Export
-- Monatsabschluss mit automatisch generiertem Kommentar
+Tech Stack:
+
+- React + Vite + TypeScript
+- Tailwind CSS
+- Recharts
+- lucide-react
+- IndexedDB mit localStorage-Fallback
+
+Build:
+
+```powershell
+npm.cmd run build
+```
+
+Deutsche und englische Release-Builds:
+
+```powershell
+npm.cmd run build:de
+npm.cmd run build:en
+```
+
+Release-ZIPs lokal erstellen:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
+```
+
+GitHub Pages und Release-Downloads werden über die Workflows in `.github/workflows/` gebaut.
+
+## Transparenz
+
+Dieses Projekt wurde mit KI-Unterstützung erstellt und anschließend vom Projektinhaber geprüft. FinanceForge ist als öffentlich herunterladbares Open-Source-Projekt gedacht.
 
 ## Lizenz
 

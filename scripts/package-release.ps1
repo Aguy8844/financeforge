@@ -14,6 +14,8 @@ try {
 
   Copy-Item -Path "README.md" -Destination "dist-de\README.md" -Force
   Copy-Item -Path "README.md" -Destination "dist-en\README.md" -Force
+  Copy-Item -Path "scripts\start-static-financeforge.bat" -Destination "dist-de\start-financeforge.bat" -Force
+  Copy-Item -Path "scripts\start-static-financeforge.bat" -Destination "dist-en\start-financeforge.bat" -Force
 
   $deZip = Join-Path $releaseDir "financeforge-de.zip"
   $enZip = Join-Path $releaseDir "financeforge-en.zip"
