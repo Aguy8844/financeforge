@@ -193,6 +193,39 @@ export interface TagTotal {
   count: number;
 }
 
+export interface DayExpenseItem {
+  id: string;
+  name: string;
+  amount: number;
+  categoryName: string;
+  categoryColor: string;
+  tags: string[];
+  review?: ExpenseReview;
+}
+
+export interface DayExpenseBreakdown {
+  date: string;
+  total: number;
+  entries: DayExpenseItem[];
+  categories: CategoryTotal[];
+  tags: TagTotal[];
+}
+
+export interface AnalyzerInsight {
+  title: string;
+  body: string;
+  severity: 'good' | 'warning' | 'critical';
+  amount?: number;
+}
+
+export interface FinanceAnalyzerResult {
+  title: string;
+  summary: string;
+  estimatedSavings: number;
+  focusLabel: string;
+  insights: AnalyzerInsight[];
+}
+
 export interface AccountBalance {
   accountId: string;
   name: string;

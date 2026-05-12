@@ -15,7 +15,10 @@ import type {
   AccountBalance,
   AppState,
   Category,
+  CategoryTotal,
+  DayExpenseBreakdown,
   ExpenseEntry,
+  FinanceAnalyzerResult,
   IncomeEntry,
   MonthlySummary,
   ProjectionPoint,
@@ -178,6 +181,72 @@ const occurrenceDateForMonth = (entryDate: string, monthKey: string) => {
   const day = Number(entryDate.slice(8, 10)) || 1;
   const maxDay = daysInMonth(monthKey);
   return `${monthKey}-${String(Math.min(day, maxDay)).padStart(2, '0')}`;
+};
+
+const expenseDateForMonth = (entry: ExpenseEntry, monthKey: string) =>
+  entry.type === 'one-time' ? entry.date : occurrenceDateForMonth(entry.date, monthKey);
+
+export const getDailyExpenseBreakdown = (state: AppState, date: string): DayExpenseBreakdown => {
+  const monthKey = monthKeyFromDate(date);
+  const entries = state.expenseEntries
+    .filter((entry) => expenseOccursInMonth(entry, monthKey))
+    .filter((entry) => expenseDateForMonth(entry, monthKey) === date)
+    .map((entry) => {
+      const category = getCategory(state.categories, entry.categoryId);
+      return {
+        id: entry.id,
+        name: entry.name,
+        amount: entry.amount,
+        categoryName: category?.name ?? 'Ohne Kategorie',
+        categoryColor: category?.color ?? '#CBD5E1',
+        tags: (entry.tags ?? [])
+          .map((tagId) => getTag(state, tagId)?.name)
+          .filter((name): name is string => Boolean(name)),
+        review: entry.review,
+      };
+    });
+
+  const categories = Object.values(
+    entries.reduce<Record<string, CategoryTotal>>((acc, entry) => {
+      acc[entry.categoryName] ??= {
+        categoryId: entry.categoryName,
+        name: entry.categoryName,
+        color: entry.categoryColor,
+        amount: 0,
+        count: 0,
+      };
+      acc[entry.categoryName].amount += entry.amount;
+      acc[entry.categoryName].count += 1;
+      return acc;
+    }, {}),
+  ).sort((a, b) => b.amount - a.amount);
+
+  const tags = Object.values(
+    entries.reduce<Record<string, TagTotal>>((acc, entry) => {
+      const tagNames = entry.tags.length ? entry.tags : ['Ohne Tag'];
+      tagNames.forEach((tagName) => {
+        const tag = state.tags.find((item) => item.name === tagName);
+        acc[tagName] ??= {
+          tagId: tag?.id ?? tagName,
+          name: tagName,
+          color: tag?.color ?? entry.categoryColor,
+          amount: 0,
+          count: 0,
+        };
+        acc[tagName].amount += entry.amount;
+        acc[tagName].count += 1;
+      });
+      return acc;
+    }, {}),
+  ).sort((a, b) => b.amount - a.amount);
+
+  return {
+    date,
+    total: entries.reduce((sum, entry) => sum + entry.amount, 0),
+    entries: entries.sort((a, b) => b.amount - a.amount),
+    categories,
+    tags,
+  };
 };
 
 const incomeOccurrencesUntilToday = (entry: IncomeEntry, openingDate: string, today = isoToday()) => {
@@ -470,6 +539,102 @@ export const getSpendingScore = (state: AppState, monthKey = currentMonthKey()) 
       savingsScore,
       reviewScore,
     },
+  };
+};
+
+export const buildFinanceAnalyzer = (
+  state: AppState,
+  monthKey = currentMonthKey(),
+  selectedDate = isoToday(),
+): FinanceAnalyzerResult => {
+  const summary = getMonthlySummary(state, monthKey);
+  const daily = getDailyMonthSeries(state, monthKey);
+  const dayBreakdown = getDailyExpenseBreakdown(state, selectedDate);
+  const review = getExpenseReviewStats(state, monthKey);
+  const modeTotals = getExpenseModeTotals(state, monthKey);
+  const topTag = summary.topTags[0];
+  const topCategory = summary.topCategories[0];
+  const selectedDay = daily.find((day) => day.date === selectedDate);
+  const selectedDayOverrun = Math.max(0, (selectedDay?.Ausgaben ?? 0) - Math.max(0, summary.dailyBudget));
+  const flexibleSpend = summary.topTags
+    .filter((tag) => ['Freizeit', 'Essen/Trinken'].includes(tag.name))
+    .reduce((sum, tag) => sum + tag.amount, 0);
+  const insights: FinanceAnalyzerResult['insights'] = [];
+
+  if (summary.isSpendingTooFast) {
+    insights.push({
+      title: 'Budgettempo bremsen',
+      body: `Du liegst ${Math.round(Math.max(0, summary.expenseTotal - summary.idealBudgetUsage))} Euro über dem idealen Monatsverlauf.`,
+      severity: 'critical',
+      amount: Math.max(0, summary.expenseTotal - summary.idealBudgetUsage),
+    });
+  } else {
+    insights.push({
+      title: 'Budgettempo stabil',
+      body: 'Deine Ausgaben liegen aktuell nicht über dem idealen Monatsverlauf.',
+      severity: 'good',
+    });
+  }
+
+  if (selectedDayOverrun > 0) {
+    insights.push({
+      title: 'Auffälliger Tag',
+      body: `Der ausgewählte Tag liegt ${Math.round(selectedDayOverrun)} Euro über deinem Tageslimit.`,
+      severity: 'warning',
+      amount: selectedDayOverrun,
+    });
+  }
+
+  if (topTag) {
+    insights.push({
+      title: `${topTag.name} prüfen`,
+      body: `Dieser Tag ist im Monat dein stärkster Ausgabenblock. Starte Kürzungen dort, bevor du notwendige Ausgaben anfasst.`,
+      severity: topTag.amount > summary.monthlyBudget * 0.3 ? 'critical' : 'warning',
+      amount: topTag.amount,
+    });
+  } else if (topCategory) {
+    insights.push({
+      title: `${topCategory.name} prüfen`,
+      body: 'Diese Kategorie ist aktuell der größte Ausgabenblock im Monat.',
+      severity: 'warning',
+      amount: topCategory.amount,
+    });
+  }
+
+  if (review.unnecessary > 0) {
+    insights.push({
+      title: 'Unnötige Ausgaben markieren',
+      body: 'Alles, was als unnötig markiert ist, ist dein direktester Sparhebel.',
+      severity: 'critical',
+      amount: review.unnecessary,
+    });
+  }
+
+  if (modeTotals.fixed > summary.monthlyBudget * 0.45) {
+    insights.push({
+      title: 'Fixkosten kontrollieren',
+      body: 'Fixkosten blockieren viel Budget. Prüfe Abos und wiederkehrende Zahlungen zuerst.',
+      severity: 'warning',
+      amount: modeTotals.fixed,
+    });
+  }
+
+  const estimatedSavings = Math.max(
+    review.unnecessary,
+    Math.min(flexibleSpend * 0.35, Math.max(0, summary.expenseTotal - summary.idealBudgetUsage) + selectedDayOverrun),
+  );
+  const focusLabel = topTag?.name ?? topCategory?.name ?? 'keine Daten';
+  const summaryText =
+    summary.expenseTotal <= 0
+      ? 'Noch keine Ausgaben im ausgewählten Monat. Der Analyser startet, sobald Daten vorhanden sind.'
+      : `Fokus: ${focusLabel}. Realistisch einsparbar wirken aktuell etwa ${Math.round(estimatedSavings)} Euro, wenn spontane Ausgaben gebremst werden.`;
+
+  return {
+    title: 'Lokaler Finanzen-Analyser',
+    summary: summaryText,
+    estimatedSavings,
+    focusLabel,
+    insights: insights.slice(0, 4),
   };
 };
 

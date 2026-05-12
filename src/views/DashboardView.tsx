@@ -16,9 +16,11 @@ import { useState, type FormEvent } from 'react';
 import { createId } from '../data/demoData';
 import {
   buildMonthlyComment,
+  buildFinanceAnalyzer,
   buildProjection,
   getAccountBalances,
   getDailyAccountBalanceSeries,
+  getDailyExpenseBreakdown,
   getDailyMonthSeries,
   getExpenseModeTotals,
   getGoalMetrics,
@@ -30,7 +32,7 @@ import {
   getTodayAllowance,
   getWeeklyMonthSeries,
 } from '../lib/calculations';
-import { addMonths, formatMonth, isoToday } from '../lib/date';
+import { addMonths, formatDate, formatMonth, isoToday } from '../lib/date';
 import { formatMoney, formatPercent, parseMoneyInput } from '../lib/format';
 import { FinanceIcon } from '../components/Icons';
 import { Card, EmptyState, ProgressBar, SectionHeader, StatCard } from '../components/ui';
@@ -54,6 +56,7 @@ export const DashboardView = ({ state, setState, selectedMonth, notify }: ViewPr
   const [accountDraft, setAccountDraft] = useState(emptyAccountDraft);
   const [balanceEditAccountId, setBalanceEditAccountId] = useState<string | null>(null);
   const [balanceDraft, setBalanceDraft] = useState('');
+  const [selectedTrackerDate, setSelectedTrackerDate] = useState(isoToday());
   const summary = getMonthlySummary(state, selectedMonth);
   const previousMonth = getMonthlySummary(state, addMonths(selectedMonth, -1));
   const reminders = getReminderMessages(state, selectedMonth);
@@ -69,6 +72,14 @@ export const DashboardView = ({ state, setState, selectedMonth, notify }: ViewPr
     .filter((tag) => ['Freizeit', 'Essen/Trinken'].includes(tag.name))
     .reduce((sum, tag) => sum + tag.amount, 0);
   const dailySeries = getDailyMonthSeries(state, selectedMonth);
+  const selectedTrackerPoint =
+    dailySeries.find((day) => day.date === selectedTrackerDate) ??
+    dailySeries.find((day) => day.date === isoToday()) ??
+    dailySeries.find((day) => day.Ausgaben > 0) ??
+    dailySeries[0];
+  const selectedDayDate = selectedTrackerPoint?.date ?? `${selectedMonth}-01`;
+  const dayBreakdown = getDailyExpenseBreakdown(state, selectedDayDate);
+  const financeAnalyzer = buildFinanceAnalyzer(state, selectedMonth, selectedDayDate);
   const accountBalanceSeries = getDailyAccountBalanceSeries(state, selectedMonth);
   const weeklySeries = getWeeklyMonthSeries(state, selectedMonth);
   const expenseModeTotals = getExpenseModeTotals(state, selectedMonth);
@@ -200,6 +211,11 @@ export const DashboardView = ({ state, setState, selectedMonth, notify }: ViewPr
     setBalanceEditAccountId(null);
     setBalanceDraft('');
     notify('Kontostand korrigiert.');
+  };
+
+  const selectTrackerDayFromChart = (event: unknown) => {
+    const payload = (event as { activePayload?: Array<{ payload?: { date?: string } }> })?.activePayload?.[0]?.payload;
+    if (payload?.date) setSelectedTrackerDate(payload.date);
   };
 
   const closeMonth = () => {
@@ -706,7 +722,7 @@ export const DashboardView = ({ state, setState, selectedMonth, notify }: ViewPr
         </div>
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={dailySeries}>
+            <LineChart data={dailySeries} onClick={selectTrackerDayFromChart}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.18)" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} />
               <YAxis tickFormatter={(value) => `${Number(value)}`} width={42} />
@@ -717,6 +733,125 @@ export const DashboardView = ({ state, setState, selectedMonth, notify }: ViewPr
               <Line type="monotone" dataKey="Kumulierte Ausgaben" stroke="#FB7185" strokeWidth={3} dot={false} />
             </LineChart>
           </ResponsiveContainer>
+        </div>
+        <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+          <div className="rounded-xl border border-white/10 bg-slate-950/24 p-4 light:border-slate-200 light:bg-white/75">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="label">Aktiver Tag</p>
+                <p className="mt-1 text-xl font-extrabold">{formatDate(selectedDayDate)}</p>
+              </div>
+              <div className="text-right">
+                <p className="label">Ausgaben am Tag</p>
+                <p className="mt-1 text-xl font-extrabold text-rose-300">{formatMoney(dayBreakdown.total)}</p>
+              </div>
+            </div>
+            {dayBreakdown.total > 0 ? (
+              <div className="mt-4 grid gap-4 lg:grid-cols-[0.75fr_1.25fr]">
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={dayBreakdown.categories}
+                        dataKey="amount"
+                        innerRadius={48}
+                        nameKey="name"
+                        outerRadius={82}
+                        paddingAngle={3}
+                      >
+                        {dayBreakdown.categories.map((item) => (
+                          <Cell key={item.categoryId} fill={item.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => formatMoney(Number(value))} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <p className="label">Wofür ausgegeben</p>
+                    <div className="mt-2 space-y-2">
+                      {dayBreakdown.categories.slice(0, 5).map((category) => (
+                        <div key={category.categoryId} className="rounded-lg border border-white/10 p-3 light:border-slate-200">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: category.color }} />
+                              <span className="font-semibold">{category.name}</span>
+                            </div>
+                            <span className="font-bold">{formatMoney(category.amount)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="label">Einzelbuchungen</p>
+                    <div className="mt-2 space-y-2">
+                      {dayBreakdown.entries.slice(0, 4).map((entry) => (
+                        <div key={entry.id} className="flex items-center justify-between gap-3 rounded-lg bg-white/[0.035] p-3 light:bg-slate-50">
+                          <div>
+                            <p className="font-semibold">{entry.name}</p>
+                            <p className="text-xs text-slate-400">{entry.tags.length ? entry.tags.join(' · ') : entry.categoryName}</p>
+                          </div>
+                          <p className="font-bold">{formatMoney(entry.amount)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <EmptyState icon="chart" title="Keine Ausgaben an diesem Tag">
+                Dieser Tag belastet dein Budget nicht.
+              </EmptyState>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-forge-cyan/20 bg-forge-cyan/[0.07] p-4 light:border-sky-200 light:bg-sky-50">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="label">Finanzen-Analyser</p>
+                <p className="mt-1 text-xl font-extrabold">{financeAnalyzer.title}</p>
+              </div>
+              <span className="rounded-full border border-forge-cyan/30 px-2.5 py-1 text-xs font-bold text-forge-cyan">
+                lokal
+              </span>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-slate-300 light:text-slate-700">{financeAnalyzer.summary}</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-white/10 bg-slate-950/25 p-3 light:border-slate-200 light:bg-white/75">
+                <p className="label">Einsparpotenzial</p>
+                <p className="mt-1 text-xl font-bold text-forge-mint">{formatMoney(financeAnalyzer.estimatedSavings)}</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-slate-950/25 p-3 light:border-slate-200 light:bg-white/75">
+                <p className="label">Fokusbereich</p>
+                <p className="mt-1 text-xl font-bold">{financeAnalyzer.focusLabel}</p>
+              </div>
+            </div>
+            <div className="mt-4 space-y-2">
+              {financeAnalyzer.insights.map((insight) => (
+                <div
+                  key={insight.title}
+                  className={`rounded-lg border p-3 ${
+                    insight.severity === 'critical'
+                      ? 'border-rose-300/25 bg-rose-300/10'
+                      : insight.severity === 'warning'
+                        ? 'border-amber-300/25 bg-amber-300/10'
+                        : 'border-emerald-300/20 bg-emerald-300/10'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-bold">{insight.title}</p>
+                    {insight.amount ? <p className="text-sm font-bold">{formatMoney(insight.amount)}</p> : null}
+                  </div>
+                  <p className="mt-1 text-sm leading-6 text-slate-300 light:text-slate-700">{insight.body}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-xs leading-5 text-slate-500">
+              Lokale Regelanalyse ohne externe KI-API. Ein echtes lokales LLM kann später optional angebunden werden.
+            </p>
+          </div>
         </div>
       </Card>
 
