@@ -190,7 +190,7 @@ const incomeOccurrencesUntilToday = (entry: IncomeEntry, openingDate: string, to
   const months = Math.max(0, monthDiff(startMonth, endMonth) + 1);
   return Array.from({ length: months }, (_, index) => addMonths(startMonth, index))
     .filter((month) => incomeOccursInMonth(entry, month))
-    .map((month) => occurrenceDateForMonth(entry.startDate ?? entry.date, month))
+    .map((month) => occurrenceDateForMonth(entry.date, month))
     .filter((date) => date > openingDate && date <= today);
 };
 
@@ -204,7 +204,7 @@ const expenseOccurrencesUntilToday = (entry: ExpenseEntry, openingDate: string, 
   const months = Math.max(0, monthDiff(startMonth, endMonth) + 1);
   return Array.from({ length: months }, (_, index) => addMonths(startMonth, index))
     .filter((month) => expenseOccursInMonth(entry, month))
-    .map((month) => occurrenceDateForMonth(entry.startDate ?? entry.date, month))
+    .map((month) => occurrenceDateForMonth(entry.date, month))
     .filter((date) => date > openingDate && date <= today);
 };
 
@@ -316,14 +316,14 @@ export const getDailyMonthSeries = (state: AppState, monthKey = currentMonthKey(
   state.incomeEntries
     .filter((entry) => incomeOccursInMonth(entry, monthKey))
     .forEach((entry) => {
-      const date = entry.type === 'one-time' ? entry.date : occurrenceDateForMonth(entry.startDate ?? entry.date, monthKey);
+      const date = entry.type === 'one-time' ? entry.date : occurrenceDateForMonth(entry.date, monthKey);
       add(date, 'Einnahmen', entry.amount);
     });
 
   state.expenseEntries
     .filter((entry) => expenseOccursInMonth(entry, monthKey))
     .forEach((entry) => {
-      const date = entry.type === 'one-time' ? entry.date : occurrenceDateForMonth(entry.startDate ?? entry.date, monthKey);
+      const date = entry.type === 'one-time' ? entry.date : occurrenceDateForMonth(entry.date, monthKey);
       add(date, 'Ausgaben', entry.amount);
     });
 

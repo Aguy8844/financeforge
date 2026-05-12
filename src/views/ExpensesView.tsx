@@ -12,7 +12,7 @@ import {
   getMonthlySummary,
   getWeeklyMonthSeries,
 } from '../lib/calculations';
-import { addMonths, defaultEntryDateForMonth, formatDate } from '../lib/date';
+import { addMonths, daysInMonth, defaultEntryDateForMonth, formatDate } from '../lib/date';
 import { formatMoney, parseMoneyInput } from '../lib/format';
 import type { ExpenseEntry, ExpenseReview, RecurrenceFrequency } from '../types';
 import { Card, EmptyState, SectionHeader, StatCard } from '../components/ui';
@@ -51,6 +51,11 @@ const reviewLabel: Record<ExpenseReview, string> = {
   necessary: 'notwendig',
   ok: 'okay',
   unnecessary: 'unnötig',
+};
+
+const recurrenceStartDate = (startMonth: string, entryDate: string) => {
+  const day = Number(entryDate.slice(8, 10)) || 1;
+  return `${startMonth}-${String(Math.min(day, daysInMonth(startMonth))).padStart(2, '0')}`;
 };
 
 export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewProps) => {
@@ -120,7 +125,7 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
       review: form.review,
       type: isRecurring ? 'recurring' : 'one-time',
       active: form.active,
-      startDate: isRecurring ? `${form.startMonth}-01` : undefined,
+      startDate: isRecurring ? recurrenceStartDate(form.startMonth, form.date) : undefined,
       endDate: isRecurring && form.endMonth ? `${form.endMonth}-01` : undefined,
       recurrenceRule: isRecurring
         ? {

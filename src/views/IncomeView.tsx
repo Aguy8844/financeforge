@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { createId } from '../data/demoData';
-import { defaultEntryDateForMonth, formatDate } from '../lib/date';
+import { daysInMonth, defaultEntryDateForMonth, formatDate } from '../lib/date';
 import { formatMoney, parseMoneyInput } from '../lib/format';
 import type { IncomeEntry, RecurrenceFrequency } from '../types';
 import { Card, EmptyState, SectionHeader } from '../components/ui';
@@ -33,6 +33,11 @@ const recurrenceText = (entry: IncomeEntry) => {
   if (entry.recurrenceRule?.frequency === 'quarterly') return 'Quartalsweise';
   if (entry.recurrenceRule?.frequency === 'yearly') return 'Jährlich';
   return `Alle ${entry.recurrenceRule?.intervalMonths ?? 1} Monate`;
+};
+
+const recurrenceStartDate = (startMonth: string, entryDate: string) => {
+  const day = Number(entryDate.slice(8, 10)) || 1;
+  return `${startMonth}-${String(Math.min(day, daysInMonth(startMonth))).padStart(2, '0')}`;
 };
 
 export const IncomeView = ({ state, setState, selectedMonth, notify }: ViewProps) => {
@@ -76,7 +81,7 @@ export const IncomeView = ({ state, setState, selectedMonth, notify }: ViewProps
       type: isRecurring ? 'recurring' : 'one-time',
       active: form.active,
       autoInclude: isRecurring ? form.autoInclude : false,
-      startDate: isRecurring ? `${form.startMonth}-01` : undefined,
+      startDate: isRecurring ? recurrenceStartDate(form.startMonth, form.date) : undefined,
       endDate: isRecurring && form.endMonth ? `${form.endMonth}-01` : undefined,
       recurrenceRule: isRecurring
         ? {
