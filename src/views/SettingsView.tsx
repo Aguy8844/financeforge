@@ -2,7 +2,7 @@ import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { createDemoState, createId, defaultAccounts, defaultCategories, defaultTags } from '../data/demoData';
 import { backupDateStamp, formatDate } from '../lib/date';
 import { getAccountBalances } from '../lib/calculations';
-import { clamp, formatMoney } from '../lib/format';
+import { clamp, formatMoney, parseMoneyInput } from '../lib/format';
 import { ensureStateShape } from '../lib/storage';
 import type { AccountTransfer, AppState, AssetAccount, Category, CategoryType, Tag, ViewKey } from '../types';
 import { FinanceIcon, financeIconOptions } from '../components/Icons';
@@ -201,7 +201,7 @@ export const SettingsView = ({ state, setState, notify }: ViewProps) => {
 
   const addAccount = (event: FormEvent) => {
     event.preventDefault();
-    const openingBalance = Number(accountForm.openingBalance);
+    const openingBalance = parseMoneyInput(accountForm.openingBalance);
     if (!accountForm.name.trim()) {
       notify('Kontoname ist erforderlich.');
       return;
@@ -209,7 +209,7 @@ export const SettingsView = ({ state, setState, notify }: ViewProps) => {
     const account: AssetAccount = {
       id: createId('account'),
       name: accountForm.name.trim(),
-      openingBalance: Number.isFinite(openingBalance) ? openingBalance : 0,
+      openingBalance,
       openingDate: accountForm.openingDate,
       color: accountForm.color,
       icon: accountForm.icon,
@@ -256,7 +256,7 @@ export const SettingsView = ({ state, setState, notify }: ViewProps) => {
 
   const addTransfer = (event: FormEvent) => {
     event.preventDefault();
-    const amount = Number(transferForm.amount);
+    const amount = parseMoneyInput(transferForm.amount);
     if (!transferForm.fromAccountId || !transferForm.toAccountId || transferForm.fromAccountId === transferForm.toAccountId || amount <= 0) {
       notify('Bitte zwei unterschiedliche Konten und einen positiven Betrag wählen.');
       return;
@@ -442,7 +442,7 @@ export const SettingsView = ({ state, setState, notify }: ViewProps) => {
                     </label>
                     <label>
                       <span className="label">Startstand</span>
-                      <input className="field mt-1" type="number" step="0.01" value={account.openingBalance} onChange={(event) => updateAccount(account.id, { openingBalance: Number(event.target.value) })} />
+                      <input className="field mt-1" inputMode="decimal" value={account.openingBalance} onChange={(event) => updateAccount(account.id, { openingBalance: parseMoneyInput(event.target.value) })} />
                     </label>
                     <label>
                       <span className="label">Snapshot-Datum</span>
@@ -473,7 +473,7 @@ export const SettingsView = ({ state, setState, notify }: ViewProps) => {
                   </label>
                   <label>
                     <span className="label">Snapshot-Stand</span>
-                    <input className="field mt-1" min="0" step="0.01" type="number" value={accountForm.openingBalance} onChange={(event) => setAccountForm({ ...accountForm, openingBalance: event.target.value })} />
+                    <input className="field mt-1" inputMode="decimal" value={accountForm.openingBalance} onChange={(event) => setAccountForm({ ...accountForm, openingBalance: event.target.value })} placeholder="z. B. 829,42" />
                   </label>
                   <label>
                     <span className="label">Snapshot-Datum</span>
@@ -545,7 +545,7 @@ export const SettingsView = ({ state, setState, notify }: ViewProps) => {
               </div>
               <label>
                 <span className="label">Betrag</span>
-                <input className="field mt-1" type="number" min="0" step="0.01" value={transferForm.amount} onChange={(event) => setTransferForm({ ...transferForm, amount: event.target.value })} />
+                <input className="field mt-1" inputMode="decimal" value={transferForm.amount} onChange={(event) => setTransferForm({ ...transferForm, amount: event.target.value })} placeholder="z. B. 50,00" />
               </label>
               <label>
                 <span className="label">Notiz optional</span>

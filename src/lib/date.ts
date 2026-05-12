@@ -13,7 +13,10 @@ const MONTH_NAMES = [
   'Dezember',
 ];
 
-export const isoToday = () => new Date().toISOString().slice(0, 10);
+export const isoDate = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+export const isoToday = () => isoDate(new Date());
 
 export const toMonthKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -28,6 +31,9 @@ export const dateFromMonthKey = (monthKey: string, day = 1) => {
 };
 
 export const monthStartDate = (monthKey: string) => `${monthKey}-01`;
+
+export const defaultEntryDateForMonth = (monthKey: string, referenceDate = isoToday()) =>
+  monthKeyFromDate(referenceDate) === monthKey ? referenceDate : monthStartDate(monthKey);
 
 export const addMonths = (monthKey: string, offset: number) => {
   const date = dateFromMonthKey(monthKey);

@@ -2,7 +2,7 @@ import { useMemo, useState, type DragEvent, type FormEvent } from 'react';
 import { createId } from '../data/demoData';
 import { getGoalMetrics, getMonthlySummary, getSavingsGoalAllocations } from '../lib/calculations';
 import { formatMonth } from '../lib/date';
-import { formatMoney, formatPercent } from '../lib/format';
+import { formatMoney, formatPercent, parseMoneyInput } from '../lib/format';
 import type { SavingsAllocationMode, SavingsGoal } from '../types';
 import { FinanceIcon } from '../components/Icons';
 import { Card, EmptyState, ProgressBar, SectionHeader, StatCard } from '../components/ui';
@@ -89,8 +89,8 @@ export const SavingsGoalsView = ({ state, setState, selectedMonth, notify }: Vie
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const targetAmount = Number(form.targetAmount);
-    const currentAmount = Number(form.currentAmount);
+    const targetAmount = parseMoneyInput(form.targetAmount);
+    const currentAmount = parseMoneyInput(form.currentAmount);
     if (!form.name.trim() || targetAmount <= 0) {
       notify('Name und Zielbetrag sind erforderlich.');
       return;
@@ -269,11 +269,11 @@ export const SavingsGoalsView = ({ state, setState, selectedMonth, notify }: Vie
             <div className="grid gap-3 sm:grid-cols-2">
               <label>
                 <span className="label">Zielbetrag</span>
-                <input className="field mt-1" min="0" step="0.01" type="number" value={form.targetAmount} onChange={(event) => setForm({ ...form, targetAmount: event.target.value })} />
+                <input className="field mt-1" inputMode="decimal" value={form.targetAmount} onChange={(event) => setForm({ ...form, targetAmount: event.target.value })} placeholder="z. B. 3.500,00" />
               </label>
               <label>
                 <span className="label">Manueller Zusatzfortschritt</span>
-                <input className="field mt-1" min="0" step="0.01" type="number" value={form.currentAmount} onChange={(event) => setForm({ ...form, currentAmount: event.target.value })} />
+                <input className="field mt-1" inputMode="decimal" value={form.currentAmount} onChange={(event) => setForm({ ...form, currentAmount: event.target.value })} placeholder="z. B. 250,00" />
                 <span className="mt-1 block text-xs text-slate-500">
                   Das Sparkonto wird automatisch zusätzlich angerechnet.
                 </span>

@@ -12,8 +12,8 @@ import {
   getMonthlySummary,
   getWeeklyMonthSeries,
 } from '../lib/calculations';
-import { addMonths, formatDate } from '../lib/date';
-import { formatMoney } from '../lib/format';
+import { addMonths, defaultEntryDateForMonth, formatDate } from '../lib/date';
+import { formatMoney, parseMoneyInput } from '../lib/format';
 import type { ExpenseEntry, ExpenseReview, RecurrenceFrequency } from '../types';
 import { Card, EmptyState, SectionHeader, StatCard } from '../components/ui';
 import type { ViewProps } from './types';
@@ -21,7 +21,7 @@ import type { ViewProps } from './types';
 type RepeatMode = 'once' | 'monthly' | 'custom';
 
 const emptyForm = (selectedMonth: string, firstCategoryId: string) => ({
-  date: `${selectedMonth}-01`,
+  date: defaultEntryDateForMonth(selectedMonth),
   name: '',
   amount: '',
   categoryId: firstCategoryId,
@@ -90,6 +90,8 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
     () => state.tags.filter((tag) => tag.type === 'expense' || tag.type === 'general'),
     [state.tags],
   );
+  const selectedAccount = state.accounts.find((account) => account.id === form.accountId);
+  const isBeforeAccountSnapshot = Boolean(selectedAccount && form.date <= selectedAccount.openingDate);
 
   const reset = () => {
     setEditingId(null);
@@ -98,7 +100,7 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const amount = Number(form.amount);
+    const amount = parseMoneyInput(form.amount);
     if (!form.name.trim() || amount <= 0) {
       notify('Beschreibung und positiver Betrag sind erforderlich.');
       return;
@@ -379,7 +381,7 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
               </label>
               <label>
                 <span className="label">Betrag</span>
-                <input className="field mt-1" min="0" step="0.01" type="number" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} />
+                <input className="field mt-1" inputMode="decimal" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} placeholder="z. B. 12,50" />
               </label>
             </div>
             <label>
@@ -413,6 +415,12 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
                 ))}
               </select>
             </label>
+            {isBeforeAccountSnapshot ? (
+              <p className="rounded-xl border border-amber-300/25 bg-amber-300/10 p-3 text-sm leading-6 text-amber-100 light:text-amber-800">
+                Diese Buchung liegt am oder vor dem Snapshot von {selectedAccount?.name}. Sie erscheint in der Monatsstatistik,
+                verändert den aktuellen Kontostand aber nicht. Für neue Ausgaben nutze das heutige Datum.
+              </p>
+            ) : null}
 
             <div>
               <span className="label">Quick-Tags</span>

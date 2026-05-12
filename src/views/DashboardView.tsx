@@ -31,7 +31,7 @@ import {
   getWeeklyMonthSeries,
 } from '../lib/calculations';
 import { addMonths, formatMonth, isoToday } from '../lib/date';
-import { formatMoney, formatPercent } from '../lib/format';
+import { formatMoney, formatPercent, parseMoneyInput } from '../lib/format';
 import { Card, EmptyState, ProgressBar, SectionHeader, StatCard } from '../components/ui';
 import type { ViewProps } from './types';
 
@@ -80,7 +80,7 @@ export const DashboardView = ({ state, setState, selectedMonth, notify }: ViewPr
 
   const submitQuickTransfer = (event: FormEvent) => {
     event.preventDefault();
-    const amount = Number(quickTransferAmount);
+    const amount = parseMoneyInput(quickTransferAmount);
     if (amount <= 0) {
       notify('Bitte einen positiven Betrag für die Eigenüberweisung eingeben.');
       return;
@@ -311,12 +311,10 @@ export const DashboardView = ({ state, setState, selectedMonth, notify }: ViewPr
               <span className="label">Betrag</span>
               <input
                 className="field mt-1"
-                min="0"
-                step="0.01"
-                type="number"
+                inputMode="decimal"
                 value={quickTransferAmount}
                 onChange={(event) => setQuickTransferAmount(event.target.value)}
-                placeholder="z. B. 50"
+                placeholder="z. B. 50,00"
               />
             </label>
             <label>

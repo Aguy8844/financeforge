@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { createId } from '../data/demoData';
 import { expenseOccursInMonth, getMonthlySummary } from '../lib/calculations';
 import { daysInMonth, elapsedDaysInMonth } from '../lib/date';
-import { formatMoney, formatPercent } from '../lib/format';
+import { formatMoney, formatPercent, parseMoneyInput } from '../lib/format';
 import type { Budget } from '../types';
 import { Card, EmptyState, ProgressBar, SectionHeader, StatCard } from '../components/ui';
 import type { ViewProps } from './types';
@@ -44,7 +44,7 @@ export const BudgetsView = ({ state, setState, selectedMonth, notify }: ViewProp
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const amount = Number(form.amount);
+    const amount = parseMoneyInput(form.amount);
     if (!form.name.trim() || amount <= 0) {
       notify('Budgetname und positiver Betrag sind erforderlich.');
       return;
@@ -127,7 +127,7 @@ export const BudgetsView = ({ state, setState, selectedMonth, notify }: ViewProp
             </label>
             <label>
               <span className="label">Betrag</span>
-              <input className="field mt-1" min="0" step="0.01" type="number" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} />
+              <input className="field mt-1" inputMode="decimal" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} placeholder="z. B. 600,00" />
             </label>
             <label>
               <span className="label">Budgetart</span>

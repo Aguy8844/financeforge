@@ -1,4 +1,5 @@
 import { createDemoState } from '../data/demoData';
+import { parseMoneyInput } from './format';
 import type { AppState } from '../types';
 
 const DB_NAME = 'financeforge-db';
@@ -88,22 +89,36 @@ export const ensureStateShape = (state: AppState): AppState => {
     ...demo,
     ...state,
     settings: { ...demo.settings, ...state.settings },
-    incomeEntries: (state.incomeEntries ?? []).map((entry) => ({ ...entry, tags: entry.tags ?? [] })),
+    incomeEntries: (state.incomeEntries ?? []).map((entry) => ({
+      ...entry,
+      amount: normalizeAmount(entry.amount),
+      tags: entry.tags ?? [],
+    })),
     expenseEntries: (state.expenseEntries ?? []).map((entry) => ({
       ...entry,
+      amount: normalizeAmount(entry.amount),
       tags: entry.tags ?? [],
       review: entry.review ?? 'ok',
     })),
     categories: state.categories ?? demo.categories,
     tags: state.tags ?? demo.tags,
-    accounts: state.accounts ?? demo.accounts,
+    accounts: (state.accounts ?? demo.accounts).map((account) => ({
+      ...account,
+      openingBalance: normalizeAmount(account.openingBalance),
+    })),
     accountTransfers: (state.accountTransfers ?? []).map((transfer) => ({
       ...transfer,
+      amount: normalizeAmount(transfer.amount),
       tags: transfer.tags ?? [],
     })),
-    budgets: state.budgets ?? [],
+    budgets: (state.budgets ?? []).map((budget) => ({
+      ...budget,
+      amount: normalizeAmount(budget.amount),
+    })),
     savingsGoals: (state.savingsGoals ?? []).map((goal) => ({
       ...goal,
+      targetAmount: normalizeAmount(goal.targetAmount),
+      currentAmount: normalizeAmount(goal.currentAmount),
       allocationPercentage: goal.allocationPercentage,
     })),
     reminders: state.reminders ?? demo.reminders,
@@ -116,6 +131,13 @@ export const ensureStateShape = (state: AppState): AppState => {
 
   return { ...shaped, schemaVersion: CURRENT_SCHEMA_VERSION };
 };
+
+const normalizeAmount = (value: unknown) =>
+  typeof value === 'string'
+    ? parseMoneyInput(value)
+    : Number.isFinite(Number(value))
+      ? Number(value)
+      : 0;
 
 const seedCurrentFinanceData = (state: AppState, seeded: AppState): AppState => ({
   ...state,
