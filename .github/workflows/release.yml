@@ -35,7 +35,7 @@ jobs:
         run: |
           mkdir -p release
           cp README.md dist-de/README.md
-          cp README.md dist-en/README.md
+          cp README.en.md dist-en/README.md
           cp scripts/start-static-financeforge.bat dist-de/start-financeforge.bat
           cp scripts/start-static-financeforge.bat dist-en/start-financeforge.bat
           cd dist-de && zip -qr ../release/financeforge-de.zip .

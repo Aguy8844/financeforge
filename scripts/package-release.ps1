@@ -13,7 +13,7 @@ try {
   npm.cmd run build:en
 
   Copy-Item -Path "README.md" -Destination "dist-de\README.md" -Force
-  Copy-Item -Path "README.md" -Destination "dist-en\README.md" -Force
+  Copy-Item -Path "README.en.md" -Destination "dist-en\README.md" -Force
   Copy-Item -Path "scripts\start-static-financeforge.bat" -Destination "dist-de\start-financeforge.bat" -Force
   Copy-Item -Path "scripts\start-static-financeforge.bat" -Destination "dist-en\start-financeforge.bat" -Force
 

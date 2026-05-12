@@ -53,6 +53,8 @@ const exactTranslations: Record<string, string> = {
   'Erhöht deinen Sparziel-Pool.': 'Increases your savings goal pool.',
   'Reduziert deinen Sparziel-Pool.': 'Reduces your savings goal pool.',
   'Netto Sparkonto-Transfers': 'Net savings transfers',
+  'Kumulierte Ausgaben': 'Cumulative expenses',
+  Gesamtvermögen: 'Total assets',
   Buchen: 'Post',
   Betrag: 'Amount',
   'Notiz optional': 'Optional note',
@@ -262,9 +264,21 @@ const phraseTranslations: Array<[string, string]> = [
   ['Einnahmen, Ausgaben und Überschuss der letzten Monate.', 'Income, expenses and surplus over the last months.'],
   ['Jeder Euro dort zählt automatisch zu deinen Sparzielen.', 'Every euro there automatically counts toward your savings goals.'],
   ['Eigenüberweisung direkt vom Privatkonto aufs Sparkonto.', 'Internal transfer directly from the current account to the savings account.'],
+  [' sind aktuell verfügbar. Das Sparkonto wird automatisch proportional auf deine aktiven Sparziele verteilt.', ' is currently available. The savings account is automatically allocated proportionally across your active goals.'],
+  ['Klartext, damit dein Privatkonto nicht unnötig ausläuft.', 'Plain guidance so your current account does not drain unnecessarily.'],
+  ['Stopp-Regel: Heute keine spontanen Essen/Freizeit-Ausgaben mehr. Erst wieder eintragen, wenn es bewusst geplant ist.', 'Stop rule: no spontaneous food or leisure spending today. Add it only when it is deliberately planned.'],
+  ['Du bist im Rahmen. Halte das Privatkonto sauber und verschiebe geplante Sparbeträge direkt aufs Sparkonto.', 'You are on track. Keep the current account clean and move planned savings directly into the savings account.'],
+  ['Beispiel: Eine Eigenüberweisung von ', 'Example: an internal transfer of '],
+  [' aufs Sparkonto erhöht diesen Pool sofort und verteilt sich auf alle aktiven Ziele.', ' to savings immediately increases this pool and distributes it across all active goals.'],
+  ['Tageslimit minus heutige Ausgaben.', "Today's spending limit minus today's expenses."],
+  ['Bleib darunter. Alles, was du nicht brauchst, kann aufs Sparkonto und arbeitet für deine Ziele.', 'Stay below it. Everything you do not need can move to savings and work toward your goals.'],
+  ['Heute ist das Tageslimit gerissen. Ab jetzt nur noch notwendige Ausgaben eintragen.', 'Today is over the daily limit. From now on, only add necessary expenses.'],
+  ['Die aktuellen Ausgaben liegen über dem idealen Tagesverlauf.', 'Current spending is above the ideal daily pace.'],
+  ['Linechart für Tagesbewegungen und kumulierte Ausgaben im ausgewählten Monat.', 'Line chart for daily movements and cumulative expenses in the selected month.'],
   ['Lokale Daten werden vorbereitet.', 'Local data is being prepared.'],
   ['FinanceForge wird geladen', 'FinanceForge is loading'],
   ['Demo wird nicht gespeichert.', 'Demo is not saved.'],
+  ['z. B.', 'e.g.'],
   ['über idealem Verlauf', 'above ideal pace'],
   ['unter idealem Verlauf', 'below ideal pace'],
   ['für den restlichen Monat', 'for the rest of the month'],
@@ -282,11 +296,25 @@ const phraseTranslations: Array<[string, string]> = [
   ['Verfügbar:', 'Available:'],
   ['Privat, Sparen, Depot oder Bar.', 'Current, savings, brokerage or cash.'],
   ['Dieser Tag belastet dein Budget nicht.', 'This day does not burden your budget.'],
+  ['Diese Werte zeigen dir, wo du sofort Druck rausnehmen kannst.', 'These values show where you can immediately reduce pressure.'],
+  ['Was jeden Monat automatisch kommt und was du aktiv steuern kannst.', 'What arrives automatically each month and what you can actively control.'],
+  ['Jeder Tag wird einzeln getrackt: Ausgaben, Einnahmen und Eigenüberweisungen aufs Sparkonto.', 'Each day is tracked separately: expenses, income and internal transfers to savings.'],
   ['Lokale Regelanalyse ohne externe KI-API. Ein echtes lokales LLM kann später optional angebunden werden.', 'Local rule-based analysis without an external AI API. A real local LLM can be connected later as an option.'],
   ['Noch keine Ausgaben im ausgewählten Monat. Der Analyser startet, sobald Daten vorhanden sind.', 'No expenses in the selected month yet. The analyzer starts once data exists.'],
+  ['Du liegst ', 'You are '],
+  [' Euro über dem idealen Monatsverlauf.', ' euros above the ideal monthly pace.'],
+  ['Der ausgewählte Tag liegt ', 'The selected day is '],
+  [' Euro über deinem Tageslimit.', ' euros above your daily limit.'],
+  ['Dieser Tag ist im Monat dein stärkster Ausgabenblock. Starte Kürzungen dort, bevor du notwendige Ausgaben anfasst.', 'This is your strongest spending block in the month. Start cutting there before touching necessary expenses.'],
+  ['Diese Kategorie ist aktuell der größte Ausgabenblock im Monat.', 'This category is currently the largest spending block in the month.'],
   ['Alles, was als unnötig markiert ist, ist dein direktester Sparhebel.', 'Everything marked unnecessary is your most direct savings lever.'],
   ['Fixkosten blockieren viel Budget. Prüfe Abos und wiederkehrende Zahlungen zuerst.', 'Fixed costs block a lot of budget. Check subscriptions and recurring payments first.'],
   ['Deine Ausgaben liegen aktuell nicht über dem idealen Monatsverlauf.', 'Your expenses are currently not above the ideal monthly pace.'],
+  ['Fokus: ', 'Focus: '],
+  ['. Realistisch einsparbar wirken aktuell etwa ', '. About '],
+  [' Euro, wenn spontane Ausgaben gebremst werden.', ' euros currently look realistically savable if spontaneous spending is reduced.'],
+  ['Du liegst vor deinem Budgettempo. Bis du wieder im Plan bist: keine spontanen Snacks, Lieferdienste, Geschenke oder Freizeitkäufe ohne vorherige Notiz.', 'You are ahead of your budget pace. Until you are back on plan: no spontaneous snacks, delivery orders, gifts or leisure purchases without a prior note.'],
+  ['Du bist unter dem idealen Verbrauch. Halte die Linie und schiebe geplante Sparbeträge direkt aufs Sparkonto.', 'You are below ideal spending. Hold the line and move planned savings directly into the savings account.'],
 ];
 
 const monthTranslations: Record<string, string> = {
@@ -318,7 +346,7 @@ const translateText = (source: string) => {
   if (exactTranslations[trimmed]) return preserveWhitespace(source, exactTranslations[trimmed]);
 
   let next = source;
-  phraseTranslations.forEach(([from, to]) => {
+  [...phraseTranslations].sort((a, b) => b[0].length - a[0].length).forEach(([from, to]) => {
     next = next.split(from).join(to);
   });
   Object.entries(monthTranslations).forEach(([from, to]) => {

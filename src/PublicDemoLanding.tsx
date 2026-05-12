@@ -44,14 +44,20 @@ export default function PublicDemoLanding() {
         <div className="max-w-4xl">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-forge-cyan/30 bg-forge-cyan/10 px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-forge-cyan">
             <FinanceIcon name="shield" size={15} />
-            100 % lokal · Open Source · Keine Paywall
+            100 % lokal · Open Source · No paywall
           </div>
           <h1 className="max-w-4xl text-4xl font-extrabold tracking-tight text-white light:text-slate-950 md:text-6xl">
             FinanceForge
           </h1>
           <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-300 light:text-slate-600">
-            Eine lokale persönliche Finanz-App für Einnahmen, Ausgaben, Budgets, Sparziele, Konten und Projektionen.
-            Diese öffentliche Demo enthält ausschließlich fiktive Vorführdaten und speichert nichts in deinem Browser.
+            <span className="block">
+              Eine lokale persönliche Finanz-App für Einnahmen, Ausgaben, Budgets, Sparziele, Konten und Projektionen.
+              Diese öffentliche Demo enthält ausschließlich fiktive Vorführdaten und speichert nichts in deinem Browser.
+            </span>
+            <span className="mt-3 block">
+              A local personal finance app for income, expenses, budgets, savings goals, accounts and projections.
+              The public demo uses fictional showcase data only and does not store anything in your browser.
+            </span>
           </p>
         </div>
 
@@ -93,10 +99,14 @@ export default function PublicDemoLanding() {
 
         <div id="download" className="grid gap-5 lg:grid-cols-[1fr_0.9fr]">
           <section className="glass-panel rounded-xl p-6">
-            <h2 className="text-xl font-extrabold">Download-Prinzip</h2>
+            <h2 className="text-xl font-extrabold">Download / Local start</h2>
             <p className="mt-3 text-sm leading-6 text-slate-400">
               Die App bleibt vollständig lokal. Nutzer laden den Quellcode oder ein Release-ZIP herunter,
               starten FinanceForge auf dem eigenen PC und speichern Finanzdaten ausschließlich im eigenen Browser.
+            </p>
+            <p className="mt-3 text-sm leading-6 text-slate-400">
+              The app stays fully local. Users download the source code or a release ZIP, run FinanceForge on their own PC
+              and keep financial data only in their own browser.
             </p>
             <div className="mt-5 grid gap-3 text-sm md:grid-cols-2">
               <div className="rounded-xl border border-white/10 bg-white/[0.035] p-4 light:border-slate-200 light:bg-white">
@@ -115,12 +125,12 @@ export default function PublicDemoLanding() {
           </section>
 
           <section className="glass-panel rounded-xl p-6">
-            <h2 className="text-xl font-extrabold">Transparenz</h2>
+            <h2 className="text-xl font-extrabold">Transparenz / Transparency</h2>
             <ul className="mt-3 space-y-3 text-sm leading-6 text-slate-400">
-              <li>Keine externen Trackingdienste.</li>
-              <li>Keine Cloud-Speicherung und keine Bankzugänge.</li>
-              <li>Kein Login, kein Stripe, keine Paywall.</li>
-              <li>Mit KI-Unterstützung erstellt und vom Projektinhaber geprüft.</li>
+              <li>Keine externen Trackingdienste / no external tracking.</li>
+              <li>Keine Cloud-Speicherung und keine Bankzugänge / no cloud storage or bank access.</li>
+              <li>Kein Login, kein Stripe, keine Paywall / no login, Stripe or paywall.</li>
+              <li>Mit KI-Unterstützung erstellt und vom Projektinhaber geprüft / created with AI assistance and checked by the project owner.</li>
             </ul>
           </section>
         </div>

@@ -473,7 +473,7 @@ export const SettingsView = ({ state, setState, notify }: ViewProps) => {
                   </label>
                   <label>
                     <span className="label">Snapshot-Stand</span>
-                    <input className="field mt-1" inputMode="decimal" value={accountForm.openingBalance} onChange={(event) => setAccountForm({ ...accountForm, openingBalance: event.target.value })} placeholder="z. B. 829,42" />
+                    <input className="field mt-1" inputMode="decimal" value={accountForm.openingBalance} onChange={(event) => setAccountForm({ ...accountForm, openingBalance: event.target.value })} placeholder="z. B. 250,00" />
                   </label>
                   <label>
                     <span className="label">Snapshot-Datum</span>

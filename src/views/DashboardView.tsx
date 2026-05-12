@@ -402,7 +402,7 @@ export const DashboardView = ({ state, setState, selectedMonth, notify }: ViewPr
                     inputMode="decimal"
                     value={balanceDraft}
                     onChange={(event) => setBalanceDraft(event.target.value)}
-                    placeholder="z. B. 829,42"
+                    placeholder="z. B. 250,00"
                   />
                 </label>
                 <div className="mt-3 flex flex-wrap gap-2">

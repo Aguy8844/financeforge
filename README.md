@@ -22,6 +22,8 @@ Sobald ein Release veröffentlicht ist, kannst du FinanceForge hier herunterlade
 - Deutsche Version: https://github.com/Aguy8844/financeforge/releases/latest/download/financeforge-de.zip
 - English version: https://github.com/Aguy8844/financeforge/releases/latest/download/financeforge-en.zip
 
+Englische Startanleitung: [`README.en.md`](README.en.md)
+
 Wenn noch kein Release verfügbar ist, kannst du oben auf `Code` -> `Download ZIP` klicken und die App aus dem Quellcode starten.
 
 ## Start Für Normale Nutzer
