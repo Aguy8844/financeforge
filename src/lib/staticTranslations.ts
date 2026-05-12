@@ -44,6 +44,16 @@ const exactTranslations: Record<string, string> = {
   'Heute ausgegeben': 'Spent today',
   'Heute noch frei': 'Still available today',
   'Schnell sparen': 'Quick saving',
+  Direktüberweisung: 'Direct transfer',
+  'Zwischen Privatkonto und Sparkonto umbuchen.': 'Move money between current account and savings account.',
+  'Privat -> Sparen': 'Current -> Savings',
+  'Sparen -> Privat': 'Savings -> Current',
+  'Geld zu deinen Sparzielen legen.': 'Move money toward your savings goals.',
+  'Sparkonto anzapfen, wenn es nötig ist.': 'Use savings when you need to.',
+  'Erhöht deinen Sparziel-Pool.': 'Increases your savings goal pool.',
+  'Reduziert deinen Sparziel-Pool.': 'Reduces your savings goal pool.',
+  'Netto Sparkonto-Transfers': 'Net savings transfers',
+  Buchen: 'Post',
   Betrag: 'Amount',
   'Notiz optional': 'Optional note',
   Verschieben: 'Move',
@@ -250,6 +260,7 @@ const phraseTranslations: Array<[string, string]> = [
   ['Buchungen', 'transactions'],
   ['Monatliches Einkommen', 'Monthly income'],
   ['Automatische Sparrate', 'Automatic savings rate'],
+  ['Verfügbar:', 'Available:'],
 ];
 
 const monthTranslations: Record<string, string> = {

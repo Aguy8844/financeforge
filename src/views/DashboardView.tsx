@@ -35,7 +35,10 @@ import { formatMoney, formatPercent, parseMoneyInput } from '../lib/format';
 import { Card, EmptyState, ProgressBar, SectionHeader, StatCard } from '../components/ui';
 import type { ViewProps } from './types';
 
+type QuickTransferDirection = 'to-savings' | 'to-private';
+
 export const DashboardView = ({ state, setState, selectedMonth, notify }: ViewProps) => {
+  const [quickTransferDirection, setQuickTransferDirection] = useState<QuickTransferDirection>('to-savings');
   const [quickTransferAmount, setQuickTransferAmount] = useState('');
   const [quickTransferNote, setQuickTransferNote] = useState('');
   const summary = getMonthlySummary(state, selectedMonth);
@@ -77,16 +80,25 @@ export const DashboardView = ({ state, setState, selectedMonth, notify }: ViewPr
     .slice(0, 3);
   const reportComment = buildMonthlyComment(summary);
   const monthClosed = state.monthClosures.some((closure) => closure.month === selectedMonth);
+  const quickTransferFromAccountId = quickTransferDirection === 'to-savings' ? 'account-private' : 'account-savings';
+  const quickTransferToAccountId = quickTransferDirection === 'to-savings' ? 'account-savings' : 'account-private';
+  const quickTransferFromName = quickTransferDirection === 'to-savings' ? 'Privatkonto' : 'Sparkonto';
+  const quickTransferToName = quickTransferDirection === 'to-savings' ? 'Sparkonto' : 'Privatkonto';
+  const quickTransferAvailable = quickTransferDirection === 'to-savings' ? privateBalance : savingsBalance;
 
   const submitQuickTransfer = (event: FormEvent) => {
     event.preventDefault();
     const amount = parseMoneyInput(quickTransferAmount);
+    if (!privateAccount || !savingsAccount) {
+      notify('Privatkonto und Sparkonto müssen vorhanden sein.');
+      return;
+    }
     if (amount <= 0) {
       notify('Bitte einen positiven Betrag für die Eigenüberweisung eingeben.');
       return;
     }
-    if (amount > privateBalance) {
-      notify('Der Betrag ist höher als dein aktuelles Privatkonto.');
+    if (amount > quickTransferAvailable) {
+      notify(`Der Betrag ist höher als dein aktuelles ${quickTransferFromName}.`);
       return;
     }
     setState((current) => ({
@@ -96,17 +108,21 @@ export const DashboardView = ({ state, setState, selectedMonth, notify }: ViewPr
         {
           id: createId('transfer'),
           date: isoToday(),
-          fromAccountId: 'account-private',
-          toAccountId: 'account-savings',
+          fromAccountId: quickTransferFromAccountId,
+          toAccountId: quickTransferToAccountId,
           amount,
-          note: quickTransferNote.trim() || 'Sparziel-Eigenüberweisung',
+          note:
+            quickTransferNote.trim() ||
+            (quickTransferDirection === 'to-savings'
+              ? 'Sparziel-Eigenüberweisung'
+              : 'Sparkonto-Entnahme'),
           tags: current.tags.some((tag) => tag.id === 'tag-eigenueberweisung') ? ['tag-eigenueberweisung'] : [],
         },
       ],
     }));
     setQuickTransferAmount('');
     setQuickTransferNote('');
-    notify('Eigenüberweisung aufs Sparkonto gespeichert.');
+    notify(`${quickTransferFromName} -> ${quickTransferToName} gespeichert.`);
   };
 
   const closeMonth = () => {
@@ -305,7 +321,51 @@ export const DashboardView = ({ state, setState, selectedMonth, notify }: ViewPr
         </Card>
 
         <Card>
-          <SectionHeader title="Schnell sparen" description="Eigenüberweisung direkt vom Privatkonto aufs Sparkonto." />
+          <SectionHeader title="Direktüberweisung" description="Zwischen Privatkonto und Sparkonto umbuchen." />
+          <div className="mb-4 grid gap-2 sm:grid-cols-2">
+            {[
+              {
+                value: 'to-savings' as QuickTransferDirection,
+                title: 'Privat -> Sparen',
+                description: 'Geld zu deinen Sparzielen legen.',
+              },
+              {
+                value: 'to-private' as QuickTransferDirection,
+                title: 'Sparen -> Privat',
+                description: 'Sparkonto anzapfen, wenn es nötig ist.',
+              },
+            ].map((option) => (
+              <button
+                key={option.value}
+                className={`rounded-xl border p-3 text-left transition ${
+                  quickTransferDirection === option.value
+                    ? 'border-forge-cyan/60 bg-forge-cyan/10 shadow-glow'
+                    : 'border-white/10 bg-white/[0.035] hover:border-white/25 light:border-slate-200 light:bg-white'
+                }`}
+                type="button"
+                onClick={() => setQuickTransferDirection(option.value)}
+              >
+                <span className="block text-sm font-extrabold">{option.title}</span>
+                <span className="mt-1 block text-xs leading-5 text-slate-400">{option.description}</span>
+              </button>
+            ))}
+          </div>
+          <div className="mb-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-white/10 p-3 light:border-slate-200">
+              <p className="label">Von</p>
+              <p className="mt-1 font-bold">{quickTransferFromName}</p>
+              <p className="mt-1 text-sm text-slate-400">Verfügbar: {formatMoney(quickTransferAvailable)}</p>
+            </div>
+            <div className="rounded-xl border border-white/10 p-3 light:border-slate-200">
+              <p className="label">Nach</p>
+              <p className="mt-1 font-bold">{quickTransferToName}</p>
+              <p className="mt-1 text-sm text-slate-400">
+                {quickTransferDirection === 'to-savings'
+                  ? 'Erhöht deinen Sparziel-Pool.'
+                  : 'Reduziert deinen Sparziel-Pool.'}
+              </p>
+            </div>
+          </div>
           <form className="grid gap-3 md:grid-cols-[1fr_1fr_auto]" onSubmit={submitQuickTransfer}>
             <label>
               <span className="label">Betrag</span>
@@ -323,12 +383,12 @@ export const DashboardView = ({ state, setState, selectedMonth, notify }: ViewPr
                 className="field mt-1"
                 value={quickTransferNote}
                 onChange={(event) => setQuickTransferNote(event.target.value)}
-                placeholder="z. B. Monats-Sparen"
+                placeholder={quickTransferDirection === 'to-savings' ? 'z. B. Monats-Sparen' : 'z. B. Reserve nutzen'}
               />
             </label>
             <div className="flex items-end">
               <button className="btn btn-primary w-full" type="submit">
-                Verschieben
+                Buchen
               </button>
             </div>
           </form>
@@ -459,7 +519,7 @@ export const DashboardView = ({ state, setState, selectedMonth, notify }: ViewPr
             </p>
           </div>
           <div className="rounded-xl border border-white/10 p-3 light:border-slate-200">
-            <p className="label">Ins Sparkonto verschoben</p>
+            <p className="label">Netto Sparkonto-Transfers</p>
             <p className="mt-1 text-xl font-bold text-forge-cyan">{formatMoney(dailySavingsTransferTotal)}</p>
           </div>
         </div>
