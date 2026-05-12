@@ -32,15 +32,28 @@ import {
 } from '../lib/calculations';
 import { addMonths, formatMonth, isoToday } from '../lib/date';
 import { formatMoney, formatPercent, parseMoneyInput } from '../lib/format';
+import { FinanceIcon } from '../components/Icons';
 import { Card, EmptyState, ProgressBar, SectionHeader, StatCard } from '../components/ui';
 import type { ViewProps } from './types';
 
 type QuickTransferDirection = 'to-savings' | 'to-private';
 
+const emptyAccountDraft = () => ({
+  name: '',
+  openingBalance: '',
+  openingDate: isoToday(),
+  color: '#38BDF8',
+  icon: 'wallet',
+});
+
 export const DashboardView = ({ state, setState, selectedMonth, notify }: ViewProps) => {
   const [quickTransferDirection, setQuickTransferDirection] = useState<QuickTransferDirection>('to-savings');
   const [quickTransferAmount, setQuickTransferAmount] = useState('');
   const [quickTransferNote, setQuickTransferNote] = useState('');
+  const [accountFormOpen, setAccountFormOpen] = useState(false);
+  const [accountDraft, setAccountDraft] = useState(emptyAccountDraft);
+  const [balanceEditAccountId, setBalanceEditAccountId] = useState<string | null>(null);
+  const [balanceDraft, setBalanceDraft] = useState('');
   const summary = getMonthlySummary(state, selectedMonth);
   const previousMonth = getMonthlySummary(state, addMonths(selectedMonth, -1));
   const reminders = getReminderMessages(state, selectedMonth);
@@ -123,6 +136,70 @@ export const DashboardView = ({ state, setState, selectedMonth, notify }: ViewPr
     setQuickTransferAmount('');
     setQuickTransferNote('');
     notify(`${quickTransferFromName} -> ${quickTransferToName} gespeichert.`);
+  };
+
+  const addDashboardAccount = (event: FormEvent) => {
+    event.preventDefault();
+    if (!accountDraft.name.trim()) {
+      notify('Kontoname ist erforderlich.');
+      return;
+    }
+    const openingBalance = parseMoneyInput(accountDraft.openingBalance);
+    setState((current) => {
+      const accounts = [
+        ...current.accounts,
+        {
+          id: createId('account'),
+          name: accountDraft.name.trim(),
+          openingBalance,
+          openingDate: accountDraft.openingDate,
+          color: accountDraft.color,
+          icon: accountDraft.icon,
+          active: true,
+        },
+      ];
+      return {
+        ...current,
+        accounts,
+        settings: {
+          ...current.settings,
+          startBalance: accounts.reduce((sum, account) => sum + account.openingBalance, 0),
+        },
+      };
+    });
+    setAccountDraft(emptyAccountDraft());
+    setAccountFormOpen(false);
+    notify('Konto gespeichert.');
+  };
+
+  const startBalanceEdit = (accountId: string, currentBalance: number) => {
+    setBalanceEditAccountId(accountId);
+    setBalanceDraft(currentBalance.toFixed(2).replace('.', ','));
+  };
+
+  const applyBalanceCorrection = (accountId: string) => {
+    const targetBalance = parseMoneyInput(balanceDraft);
+    setState((current) => {
+      const currentBalance = getAccountBalances(current).find((account) => account.accountId === accountId)?.balance;
+      if (currentBalance === undefined) return current;
+      const delta = targetBalance - currentBalance;
+      const accounts = current.accounts.map((account) =>
+        account.id === accountId
+          ? { ...account, openingBalance: account.openingBalance + delta }
+          : account,
+      );
+      return {
+        ...current,
+        accounts,
+        settings: {
+          ...current.settings,
+          startBalance: accounts.reduce((sum, account) => sum + account.openingBalance, 0),
+        },
+      };
+    });
+    setBalanceEditAccountId(null);
+    setBalanceDraft('');
+    notify('Kontostand korrigiert.');
   };
 
   const closeMonth = () => {
@@ -279,19 +356,123 @@ export const DashboardView = ({ state, setState, selectedMonth, notify }: ViewPr
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {accountBalances.map((account) => (
-          <div key={account.accountId} className="glass-panel rounded-xl p-4">
+          <div key={account.accountId} className="glass-panel min-h-[118px] rounded-xl p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="label">{account.name}</p>
                 <p className="mt-2 text-2xl font-extrabold">{formatMoney(account.balance)}</p>
               </div>
-              <span className="h-3 w-3 rounded-full shadow-glow" style={{ backgroundColor: account.color }} />
+              <div className="flex items-center gap-2">
+                <button
+                  className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.045] text-slate-400 transition hover:border-forge-cyan/50 hover:text-forge-cyan light:border-slate-200 light:bg-white"
+                  title="Kontostand korrigieren"
+                  type="button"
+                  onClick={() => startBalanceEdit(account.accountId, account.balance)}
+                >
+                  <FinanceIcon name="pencil" size={15} />
+                </button>
+                <span className="h-3 w-3 rounded-full shadow-glow" style={{ backgroundColor: account.color }} />
+              </div>
             </div>
             <p className="mt-3 text-xs text-slate-400">
               Snapshot {formatMoney(account.openingBalance)}
             </p>
+            {balanceEditAccountId === account.accountId ? (
+              <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/30 p-3 light:border-slate-200 light:bg-white/75">
+                <label>
+                  <span className="label">Aktueller Kontostand</span>
+                  <input
+                    className="field mt-1"
+                    inputMode="decimal"
+                    value={balanceDraft}
+                    onChange={(event) => setBalanceDraft(event.target.value)}
+                    placeholder="z. B. 829,42"
+                  />
+                </label>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button className="btn btn-primary py-1.5" type="button" onClick={() => applyBalanceCorrection(account.accountId)}>
+                    Setzen
+                  </button>
+                  <button className="btn py-1.5" type="button" onClick={() => setBalanceEditAccountId(null)}>
+                    Abbrechen
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         ))}
+        {accountFormOpen ? (
+          <form className="glass-panel min-h-[118px] rounded-xl border border-dashed border-forge-cyan/40 p-4" onSubmit={addDashboardAccount}>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="font-bold">Neues Konto</p>
+              <button className="btn py-1.5" type="button" onClick={() => setAccountFormOpen(false)}>
+                Abbrechen
+              </button>
+            </div>
+            <div className="grid gap-3">
+              <label>
+                <span className="label">Name</span>
+                <input
+                  className="field mt-1"
+                  value={accountDraft.name}
+                  onChange={(event) => setAccountDraft({ ...accountDraft, name: event.target.value })}
+                  placeholder="z. B. Tagesgeld"
+                />
+              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label>
+                  <span className="label">Snapshot-Stand</span>
+                  <input
+                    className="field mt-1"
+                    inputMode="decimal"
+                    value={accountDraft.openingBalance}
+                    onChange={(event) => setAccountDraft({ ...accountDraft, openingBalance: event.target.value })}
+                    placeholder="0,00"
+                  />
+                </label>
+                <label>
+                  <span className="label">Snapshot-Datum</span>
+                  <input
+                    className="field mt-1"
+                    type="date"
+                    value={accountDraft.openingDate}
+                    onChange={(event) => setAccountDraft({ ...accountDraft, openingDate: event.target.value })}
+                  />
+                </label>
+              </div>
+              <div className="flex items-end gap-3">
+                <label className="flex-1">
+                  <span className="label">Farbe</span>
+                  <input
+                    className="field mt-1 h-11"
+                    type="color"
+                    value={accountDraft.color}
+                    onChange={(event) => setAccountDraft({ ...accountDraft, color: event.target.value })}
+                  />
+                </label>
+                <button className="btn btn-primary mb-0.5" type="submit">
+                  Speichern
+                </button>
+              </div>
+            </div>
+          </form>
+        ) : (
+          <button
+            className="min-h-[118px] rounded-xl border-2 border-dashed border-white/20 bg-white/[0.025] p-4 text-left transition hover:border-forge-cyan/55 hover:bg-forge-cyan/10 light:border-slate-300 light:bg-white/70"
+            type="button"
+            onClick={() => setAccountFormOpen(true)}
+          >
+            <div className="flex h-full items-center justify-center gap-4">
+              <span className="grid h-12 w-12 place-items-center rounded-xl bg-forge-cyan/10 text-forge-cyan light:bg-sky-50">
+                <FinanceIcon name="plus-circle" size={26} />
+              </span>
+              <div>
+                <p className="font-extrabold">Konto hinzufügen</p>
+                <p className="mt-1 text-sm text-slate-400">Privat, Sparen, Depot oder Bar.</p>
+              </div>
+            </div>
+          </button>
+        )}
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">

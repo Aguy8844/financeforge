@@ -92,6 +92,9 @@ const exactTranslations: Record<string, string> = {
   Wiederholung: 'Recurrence',
   Aktionen: 'Actions',
   Bearbeiten: 'Edit',
+  'Kontostand korrigieren': 'Adjust balance',
+  'Aktueller Kontostand': 'Current balance',
+  Setzen: 'Set',
   Löschen: 'Delete',
   Speichern: 'Save',
   Aktualisieren: 'Update',
@@ -160,6 +163,7 @@ const exactTranslations: Record<string, string> = {
   'Kapitalzufluss aktiv': 'Capital inflow active',
   Vermögenskonten: 'Asset accounts',
   Startstand: 'Opening balance',
+  'Snapshot-Stand': 'Snapshot balance',
   'Snapshot-Datum': 'Snapshot date',
   'Konto löschen': 'Delete account',
   'Konto hinzufügen': 'Add account',
@@ -261,6 +265,7 @@ const phraseTranslations: Array<[string, string]> = [
   ['Monatliches Einkommen', 'Monthly income'],
   ['Automatische Sparrate', 'Automatic savings rate'],
   ['Verfügbar:', 'Available:'],
+  ['Privat, Sparen, Depot oder Bar.', 'Current, savings, brokerage or cash.'],
 ];
 
 const monthTranslations: Record<string, string> = {

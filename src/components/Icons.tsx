@@ -27,6 +27,7 @@ import {
   Music,
   Moon,
   Landmark,
+  Pencil,
   PiggyBank,
   PlusCircle,
   Repeat,
@@ -96,6 +97,7 @@ const icons: Record<string, LucideIcon> = {
   trash: Trash2,
   calendar: CalendarCheck,
   chart: BarChart3,
+  pencil: Pencil,
 };
 
 export const financeIconOptions = [
