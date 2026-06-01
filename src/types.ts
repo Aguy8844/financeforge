@@ -25,6 +25,13 @@ export interface RecurrenceRule {
   intervalMonths?: number;
 }
 
+export interface ExpenseAmountAdjustment {
+  id: string;
+  effectiveDate: string;
+  amount: number;
+  note?: string;
+}
+
 export interface Settings {
   currency: Currency;
   language: 'de';
@@ -78,6 +85,7 @@ export interface ExpenseEntry {
   recurrenceRule?: RecurrenceRule;
   startDate?: string;
   endDate?: string;
+  amountAdjustments?: ExpenseAmountAdjustment[];
   review?: ExpenseReview;
   active: boolean;
 }

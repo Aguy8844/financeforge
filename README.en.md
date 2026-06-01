@@ -99,6 +99,7 @@ The web demo uses fictional data only. It is not connected to your local Finance
 - savings goals with priorities and progress
 - multiple asset accounts
 - internal transfers between accounts
+- subscription amounts with change history from a selected month
 - daily tracking as a line chart
 - daily income/expense bar chart
 - account balance history by day

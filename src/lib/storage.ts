@@ -97,6 +97,10 @@ export const ensureStateShape = (state: AppState): AppState => {
     expenseEntries: (state.expenseEntries ?? []).map((entry) => ({
       ...entry,
       amount: normalizeAmount(entry.amount),
+      amountAdjustments: (entry.amountAdjustments ?? []).map((adjustment) => ({
+        ...adjustment,
+        amount: normalizeAmount(adjustment.amount),
+      })),
       tags: entry.tags ?? [],
       review: entry.review ?? 'ok',
     })),
@@ -149,6 +153,10 @@ const seedCurrentFinanceData = (state: AppState, seeded: AppState): AppState => 
   })),
   expenseEntries: mergeById(seeded.expenseEntries, state.expenseEntries).map((entry) => ({
     ...entry,
+    amountAdjustments: (entry.amountAdjustments ?? []).map((adjustment) => ({
+      ...adjustment,
+      amount: normalizeAmount(adjustment.amount),
+    })),
     tags: simplifyEntryTags(entry.tags ?? []),
     review: entry.review ?? 'ok',
   })),

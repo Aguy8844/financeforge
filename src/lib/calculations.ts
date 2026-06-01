@@ -70,13 +70,32 @@ export const getCategory = (categories: Category[], id: string) =>
 export const getTag = (state: AppState, id: string) =>
   state.tags.find((tag) => tag.id === id);
 
+const occurrenceDateForMonth = (entryDate: string, monthKey: string) => {
+  const day = Number(entryDate.slice(8, 10)) || 1;
+  const maxDay = daysInMonth(monthKey);
+  return `${monthKey}-${String(Math.min(day, maxDay)).padStart(2, '0')}`;
+};
+
+export const getExpenseAmountForDate = (entry: ExpenseEntry, date: string) => {
+  const latestAdjustment = [...(entry.amountAdjustments ?? [])]
+    .filter((adjustment) => adjustment.effectiveDate <= date)
+    .sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate))[0];
+  return latestAdjustment?.amount ?? entry.amount;
+};
+
+export const getExpenseAmountForMonth = (entry: ExpenseEntry, monthKey: string) =>
+  getExpenseAmountForDate(entry, entry.type === 'one-time' ? entry.date : occurrenceDateForMonth(entry.date, monthKey));
+
+const expenseDateForMonth = (entry: ExpenseEntry, monthKey: string) =>
+  entry.type === 'one-time' ? entry.date : occurrenceDateForMonth(entry.date, monthKey);
+
 export const getMonthlySummary = (state: AppState, monthKey = currentMonthKey()): MonthlySummary => {
   const incomeTotal = state.incomeEntries
     .filter((entry) => incomeOccursInMonth(entry, monthKey))
     .reduce((sum, entry) => sum + entry.amount, 0);
 
   const monthExpenses = state.expenseEntries.filter((entry) => expenseOccursInMonth(entry, monthKey));
-  const expenseTotal = monthExpenses.reduce((sum, entry) => sum + entry.amount, 0);
+  const expenseTotal = monthExpenses.reduce((sum, entry) => sum + getExpenseAmountForMonth(entry, monthKey), 0);
   const monthlyBudget =
     state.budgets.find((budget) => budget.active && !budget.categoryId)?.amount ??
     state.settings.monthlyBudget;
@@ -100,7 +119,7 @@ export const getMonthlySummary = (state: AppState, monthKey = currentMonthKey())
           amount: 0,
           count: 0,
         };
-        acc[id].amount += expense.amount;
+        acc[id].amount += getExpenseAmountForMonth(expense, monthKey);
         acc[id].count += 1;
         return acc;
       },
@@ -146,7 +165,7 @@ export const getExpenseTagTotals = (state: AppState, monthKey = currentMonthKey(
             amount: 0,
             count: 0,
           };
-          acc[tagId].amount += expense.amount;
+          acc[tagId].amount += getExpenseAmountForMonth(expense, monthKey);
           acc[tagId].count += 1;
         });
       return acc;
@@ -177,15 +196,6 @@ export const getIncomeTagTotals = (state: AppState, monthKey = currentMonthKey()
   ).sort((a, b) => b.amount - a.amount);
 };
 
-const occurrenceDateForMonth = (entryDate: string, monthKey: string) => {
-  const day = Number(entryDate.slice(8, 10)) || 1;
-  const maxDay = daysInMonth(monthKey);
-  return `${monthKey}-${String(Math.min(day, maxDay)).padStart(2, '0')}`;
-};
-
-const expenseDateForMonth = (entry: ExpenseEntry, monthKey: string) =>
-  entry.type === 'one-time' ? entry.date : occurrenceDateForMonth(entry.date, monthKey);
-
 export const getDailyExpenseBreakdown = (state: AppState, date: string): DayExpenseBreakdown => {
   const monthKey = monthKeyFromDate(date);
   const entries = state.expenseEntries
@@ -193,10 +203,11 @@ export const getDailyExpenseBreakdown = (state: AppState, date: string): DayExpe
     .filter((entry) => expenseDateForMonth(entry, monthKey) === date)
     .map((entry) => {
       const category = getCategory(state.categories, entry.categoryId);
+      const amount = getExpenseAmountForDate(entry, date);
       return {
         id: entry.id,
         name: entry.name,
-        amount: entry.amount,
+        amount,
         categoryName: category?.name ?? 'Ohne Kategorie',
         categoryColor: category?.color ?? '#CBD5E1',
         tags: (entry.tags ?? [])
@@ -290,7 +301,10 @@ export const getAccountBalances = (state: AppState, today = isoToday()): Account
       state.expenseEntries
         .filter((entry) => entry.accountId === account.id)
         .forEach((entry) => {
-          balance -= expenseOccurrencesUntilToday(entry, account.openingDate, today).length * entry.amount;
+          balance -= expenseOccurrencesUntilToday(entry, account.openingDate, today).reduce(
+            (sum, date) => sum + getExpenseAmountForDate(entry, date),
+            0,
+          );
         });
       state.accountTransfers
         .filter((transfer) => transfer.date > account.openingDate && transfer.date <= today)
@@ -393,7 +407,7 @@ export const getDailyMonthSeries = (state: AppState, monthKey = currentMonthKey(
     .filter((entry) => expenseOccursInMonth(entry, monthKey))
     .forEach((entry) => {
       const date = entry.type === 'one-time' ? entry.date : occurrenceDateForMonth(entry.date, monthKey);
-      add(date, 'Ausgaben', entry.amount);
+      add(date, 'Ausgaben', getExpenseAmountForDate(entry, date));
     });
 
   state.accountTransfers
@@ -457,10 +471,10 @@ export const getExpenseModeTotals = (state: AppState, monthKey = currentMonthKey
   const expenses = state.expenseEntries.filter((entry) => expenseOccursInMonth(entry, monthKey));
   const fixed = expenses
     .filter((entry) => entry.type === 'recurring')
-    .reduce((sum, entry) => sum + entry.amount, 0);
+    .reduce((sum, entry) => sum + getExpenseAmountForMonth(entry, monthKey), 0);
   const variable = expenses
     .filter((entry) => entry.type === 'one-time')
-    .reduce((sum, entry) => sum + entry.amount, 0);
+    .reduce((sum, entry) => sum + getExpenseAmountForMonth(entry, monthKey), 0);
   return {
     fixed,
     variable,
@@ -474,8 +488,9 @@ export const getExpenseReviewStats = (state: AppState, monthKey = currentMonthKe
   const stats = expenses.reduce(
     (acc, entry) => {
       const review = entry.review ?? 'ok';
-      acc[review] += entry.amount;
-      acc.total += entry.amount;
+      const amount = getExpenseAmountForMonth(entry, monthKey);
+      acc[review] += amount;
+      acc.total += amount;
       return acc;
     },
     { necessary: 0, ok: 0, unnecessary: 0, total: 0 },
@@ -660,6 +675,7 @@ export const getAverageMonthlyExpenses = (state: AppState, months = 6) => {
 export const getHighestExpenses = (state: AppState, limit = 5) =>
   [...state.expenseEntries]
     .filter((entry) => entry.active)
+    .map((entry) => ({ ...entry, amount: getExpenseAmountForMonth(entry, currentMonthKey()) }))
     .sort((a, b) => b.amount - a.amount)
     .slice(0, limit);
 

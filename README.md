@@ -105,6 +105,7 @@ Die Demo im Web nutzt nur fiktive Daten. Sie ist nicht mit deinen lokalen Financ
 - Sparziele mit Prioritäten und Ziel-Fortschritt
 - mehrere Vermögenskonten
 - Eigenüberweisungen zwischen Konten
+- Abo-Beträge mit Änderungsverlauf ab einem gewählten Monat
 - Tages-Tracking als Linechart
 - Tages-Einnahmen/Ausgaben-Säulenstatistik
 - Kontostand-Verlauf pro Tag

@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { createId } from '../data/demoData';
 import {
@@ -7,6 +7,7 @@ import {
   getDailyMonthSeries,
   getExpenseModeTotals,
   getExpenseReviewStats,
+  getExpenseAmountForMonth,
   getHighestExpenses,
   getMonthSeries,
   getMonthlySummary,
@@ -38,6 +39,13 @@ const emptyForm = (selectedMonth: string, firstCategoryId: string) => ({
   active: true,
 });
 
+const emptySubscriptionUpdate = (selectedMonth: string) => ({
+  entryId: '',
+  amount: '',
+  effectiveMonth: selectedMonth,
+  note: '',
+});
+
 const recurrenceText = (entry: ExpenseEntry) => {
   if (entry.type === 'one-time') return 'Einmalig';
   if (entry.recurrenceRule?.frequency === 'monthly') return 'Monatlich';
@@ -66,6 +74,7 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
   const firstCategoryId = expenseCategories[0]?.id ?? 'expense-other';
   const [form, setForm] = useState(emptyForm(selectedMonth, firstCategoryId));
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [subscriptionUpdate, setSubscriptionUpdate] = useState(emptySubscriptionUpdate(selectedMonth));
   const summary = getMonthlySummary(state, selectedMonth);
   const accountBalances = getAccountBalances(state);
   const privateBalance = accountBalances.find((account) => account.accountId === 'account-private')?.balance ?? 0;
@@ -97,6 +106,18 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
   );
   const selectedAccount = state.accounts.find((account) => account.id === form.accountId);
   const isBeforeAccountSnapshot = Boolean(selectedAccount && form.date <= selectedAccount.openingDate);
+  const recurringExpenses = useMemo(
+    () => state.expenseEntries.filter((entry) => entry.type === 'recurring').sort((a, b) => a.name.localeCompare(b.name)),
+    [state.expenseEntries],
+  );
+  const selectedSubscriptionId = subscriptionUpdate.entryId || recurringExpenses[0]?.id || '';
+  const selectedSubscription = recurringExpenses.find((entry) => entry.id === selectedSubscriptionId);
+
+  useEffect(() => {
+    if (!subscriptionUpdate.entryId && recurringExpenses[0]) {
+      setSubscriptionUpdate((current) => ({ ...current, entryId: recurringExpenses[0].id }));
+    }
+  }, [recurringExpenses, subscriptionUpdate.entryId]);
 
   const reset = () => {
     setEditingId(null);
@@ -112,6 +133,7 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
     }
 
     const isRecurring = form.repeatMode !== 'once';
+    const previousEntry = editingId ? state.expenseEntries.find((entry) => entry.id === editingId) : undefined;
     const entry: ExpenseEntry = {
       id: editingId ?? createId('expense'),
       date: form.date,
@@ -134,6 +156,7 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
               form.frequency === 'custom' ? Math.max(1, Number(form.intervalMonths) || 1) : undefined,
           }
         : undefined,
+      amountAdjustments: isRecurring ? previousEntry?.amountAdjustments ?? [] : undefined,
     };
 
     setState((current) => ({
@@ -181,6 +204,41 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
     notify('Ausgabe gelöscht.');
   };
 
+  const adjustSubscriptionAmount = (event: FormEvent) => {
+    event.preventDefault();
+    const amount = parseMoneyInput(subscriptionUpdate.amount);
+    const entryId = selectedSubscriptionId;
+    if (!entryId || amount <= 0 || !subscriptionUpdate.effectiveMonth) {
+      notify('Abo, gültiger Monat und positiver Betrag sind erforderlich.');
+      return;
+    }
+
+    const effectiveDate = `${subscriptionUpdate.effectiveMonth}-01`;
+    setState((current) => ({
+      ...current,
+      expenseEntries: current.expenseEntries.map((entry) => {
+        if (entry.id !== entryId) return entry;
+        const nextAdjustment = {
+          id: createId('expense-adjustment'),
+          effectiveDate,
+          amount,
+          note: subscriptionUpdate.note.trim() || undefined,
+        };
+        return {
+          ...entry,
+          amountAdjustments: [
+            ...(entry.amountAdjustments ?? []).filter(
+              (adjustment) => adjustment.effectiveDate.slice(0, 7) !== subscriptionUpdate.effectiveMonth,
+            ),
+            nextAdjustment,
+          ].sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate)),
+        };
+      }),
+    }));
+    notify('Abo-Betrag ab Monat angepasst.');
+    setSubscriptionUpdate((current) => ({ ...current, amount: '', note: '' }));
+  };
+
   const toggleTag = (tagId: string) => {
     setForm((current) => ({
       ...current,
@@ -219,6 +277,96 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
         <StatCard label="Top-Kategorie" value={frequentCategory} icon="circle" tone="violet" />
         <StatCard label="Stärkster Tag" value={frequentTag} icon="sparkles" tone="amber" />
       </div>
+
+      <Card>
+        <SectionHeader
+          title="Abo-Betrag anpassen"
+          description="Ändere den Betrag ab einem Monat. Vorherige Monate bleiben mit dem alten Betrag gerechnet."
+        />
+        {recurringExpenses.length ? (
+          <form className="space-y-4" onSubmit={adjustSubscriptionAmount}>
+            <div className="grid gap-4 lg:grid-cols-[1.3fr_0.8fr_0.8fr]">
+              <label>
+                <span className="label">Abo</span>
+                <select
+                  className="field mt-1"
+                  value={selectedSubscriptionId}
+                  onChange={(event) => setSubscriptionUpdate({ ...subscriptionUpdate, entryId: event.target.value })}
+                >
+                  {recurringExpenses.map((entry) => (
+                    <option key={entry.id} value={entry.id}>
+                      {entry.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span className="label">Neuer Betrag</span>
+                <input
+                  className="field mt-1"
+                  inputMode="decimal"
+                  value={subscriptionUpdate.amount}
+                  onChange={(event) => setSubscriptionUpdate({ ...subscriptionUpdate, amount: event.target.value })}
+                  placeholder="z. B. 8,84"
+                />
+              </label>
+              <label>
+                <span className="label">Gültig ab</span>
+                <input
+                  className="field mt-1"
+                  type="month"
+                  value={subscriptionUpdate.effectiveMonth}
+                  onChange={(event) => setSubscriptionUpdate({ ...subscriptionUpdate, effectiveMonth: event.target.value })}
+                />
+              </label>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+              <label>
+                <span className="label">Notiz optional</span>
+                <input
+                  className="field mt-1"
+                  value={subscriptionUpdate.note}
+                  onChange={(event) => setSubscriptionUpdate({ ...subscriptionUpdate, note: event.target.value })}
+                  placeholder="z. B. Wechselkurs-Anpassung"
+                />
+              </label>
+              <button className="btn btn-primary" type="submit">
+                Betrag ab Monat setzen
+              </button>
+            </div>
+
+            {selectedSubscription ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-4 light:border-slate-200 light:bg-slate-50">
+                  <p className="label">Aktuell im ausgewählten Monat</p>
+                  <p className="mt-1 text-2xl font-extrabold">
+                    {formatMoney(getExpenseAmountForMonth(selectedSubscription, selectedMonth))}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Basisbetrag {formatMoney(selectedSubscription.amount)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-4 light:border-slate-200 light:bg-slate-50">
+                  <p className="label">Änderungsverlauf</p>
+                  <div className="mt-2 space-y-1 text-sm text-slate-300 light:text-slate-700">
+                    <p>Basis ab {formatDate(selectedSubscription.startDate ?? selectedSubscription.date)}: {formatMoney(selectedSubscription.amount)}</p>
+                    {[...(selectedSubscription.amountAdjustments ?? [])].sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate)).map((adjustment) => (
+                      <p key={adjustment.id}>
+                        ab {formatDate(adjustment.effectiveDate)}: {formatMoney(adjustment.amount)}
+                        {adjustment.note ? ` · ${adjustment.note}` : ''}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </form>
+        ) : (
+          <EmptyState icon="repeat" title="Noch keine Abos">
+            Lege eine wiederkehrende Ausgabe an, dann kannst du hier Preisänderungen ab einem Monat hinterlegen.
+          </EmptyState>
+        )}
+      </Card>
 
       <Card className={budgetPressure > 0 ? 'border-rose-400/30' : 'border-emerald-400/20'}>
         <SectionHeader
@@ -387,6 +535,11 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
               <label>
                 <span className="label">Betrag</span>
                 <input className="field mt-1" inputMode="decimal" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} placeholder="z. B. 12,50" />
+                {form.repeatMode !== 'once' ? (
+                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                    Das ist der Basisbetrag. Spätere Abo-Preisänderungen kannst du oben ab einem Monat eintragen.
+                  </p>
+                ) : null}
               </label>
             </div>
             <label>
@@ -555,6 +708,8 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
                     .sort((a, b) => b.date.localeCompare(a.date))
                     .map((entry) => {
                       const category = state.categories.find((item) => item.id === entry.categoryId);
+                      const activeAmount = getExpenseAmountForMonth(entry, selectedMonth);
+                      const hasAdjustedAmount = entry.type === 'recurring' && activeAmount !== entry.amount;
                       return (
                         <tr key={entry.id}>
                           <td className="py-4 text-slate-400">{formatDate(entry.date)}</td>
@@ -584,7 +739,12 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
                             </span>
                           </td>
                           <td>{recurrenceText(entry)}</td>
-                          <td className="text-right font-bold">{formatMoney(entry.amount)}</td>
+                          <td className="text-right">
+                            <p className="font-bold">{formatMoney(activeAmount)}</p>
+                            {hasAdjustedAmount ? (
+                              <p className="text-xs text-slate-500">Basis {formatMoney(entry.amount)}</p>
+                            ) : null}
+                          </td>
                           <td className="text-right">
                             <button className="btn mr-2 py-1.5" type="button" onClick={() => edit(entry)}>
                               Bearbeiten
