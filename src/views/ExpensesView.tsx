@@ -110,6 +110,10 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
     () => state.expenseEntries.filter((entry) => entry.type === 'recurring').sort((a, b) => a.name.localeCompare(b.name)),
     [state.expenseEntries],
   );
+  const sortedExpenseEntries = useMemo(
+    () => [...state.expenseEntries].sort((a, b) => b.date.localeCompare(a.date)),
+    [state.expenseEntries],
+  );
   const selectedSubscriptionId = subscriptionUpdate.entryId || recurringExpenses[0]?.id || '';
   const selectedSubscription = recurringExpenses.find((entry) => entry.id === selectedSubscriptionId);
 
@@ -318,6 +322,9 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
                   value={subscriptionUpdate.effectiveMonth}
                   onChange={(event) => setSubscriptionUpdate({ ...subscriptionUpdate, effectiveMonth: event.target.value })}
                 />
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  Wenn ein Abo schon im Mai abgezogen wurde, wähle hier Mai 2026, damit der Monat rückwirkend korrigiert wird.
+                </p>
               </label>
             </div>
             <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
@@ -687,77 +694,89 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
         </Card>
 
         <Card>
-          <SectionHeader title="Ausgabenliste" />
-          {state.expenseEntries.length ? (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[880px] text-left text-sm">
-                <thead className="text-xs uppercase tracking-[0.08em] text-slate-400">
-                  <tr>
-                    <th className="py-2">Datum</th>
-                    <th>Beschreibung</th>
-                    <th>Kategorie</th>
-                    <th>Tags</th>
-                    <th>Bewertung</th>
-                    <th>Art</th>
-                    <th className="text-right">Betrag</th>
-                    <th className="text-right">Aktionen</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/10 light:divide-slate-200">
-                  {[...state.expenseEntries]
-                    .sort((a, b) => b.date.localeCompare(a.date))
-                    .map((entry) => {
-                      const category = state.categories.find((item) => item.id === entry.categoryId);
-                      const activeAmount = getExpenseAmountForMonth(entry, selectedMonth);
-                      const hasAdjustedAmount = entry.type === 'recurring' && activeAmount !== entry.amount;
-                      return (
-                        <tr key={entry.id}>
-                          <td className="py-4 text-slate-400">{formatDate(entry.date)}</td>
-                          <td className="font-semibold">{entry.name}</td>
-                          <td>{category?.name ?? 'Ohne Kategorie'}</td>
-                          <td>
-                            <div className="flex flex-wrap gap-1">
-                              {(entry.tags ?? []).slice(0, 3).map((tagId) => {
-                                const tag = state.tags.find((item) => item.id === tagId);
-                                return tag ? (
-                                  <span key={tag.id} className="rounded-full px-2 py-0.5 text-xs font-semibold text-slate-950" style={{ backgroundColor: tag.color }}>
-                                    {tag.name}
-                                  </span>
-                                ) : null;
-                              })}
-                            </div>
-                          </td>
-                          <td>
-                            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                              (entry.review ?? 'ok') === 'unnecessary'
-                                ? 'bg-rose-400/20 text-rose-200'
-                                : (entry.review ?? 'ok') === 'necessary'
-                                  ? 'bg-emerald-400/20 text-emerald-200'
-                                  : 'bg-slate-500/20 text-slate-200'
-                            }`}>
-                              {reviewLabel[entry.review ?? 'ok']}
+          <SectionHeader
+            title="Ausgabenliste"
+            description="Kartenansicht mit Kategorie, Tags, Bewertung, Konto und aktivem Abo-Betrag."
+            action={<span className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-bold text-slate-300 light:border-slate-200 light:text-slate-600">{sortedExpenseEntries.length} Einträge</span>}
+          />
+          {sortedExpenseEntries.length ? (
+            <div className="grid gap-3 lg:grid-cols-2">
+              {sortedExpenseEntries.map((entry) => {
+                const category = state.categories.find((item) => item.id === entry.categoryId);
+                const account = state.accounts.find((item) => item.id === entry.accountId);
+                const activeAmount = getExpenseAmountForMonth(entry, selectedMonth);
+                const hasAdjustedAmount = entry.type === 'recurring' && activeAmount !== entry.amount;
+                const adjustmentCount = entry.amountAdjustments?.length ?? 0;
+                const review = entry.review ?? 'ok';
+                const reviewClass =
+                  review === 'unnecessary'
+                    ? 'border-rose-300/20 bg-rose-300/10 text-rose-200'
+                    : review === 'necessary'
+                      ? 'border-emerald-300/20 bg-emerald-300/10 text-emerald-200'
+                      : 'border-slate-300/10 bg-slate-500/10 text-slate-200';
+                return (
+                  <article key={entry.id} className="rounded-xl border border-white/10 bg-white/[0.035] p-4 transition hover:border-rose-300/35 light:border-slate-200 light:bg-slate-50">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full border border-rose-300/25 bg-rose-300/10 px-2.5 py-1 text-xs font-bold text-rose-200">
+                            {formatDate(entry.date)}
+                          </span>
+                          <span className="rounded-full border border-white/10 px-2.5 py-1 text-xs font-semibold text-slate-400 light:border-slate-200">
+                            {recurrenceText(entry)}
+                          </span>
+                          <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${reviewClass}`}>
+                            {reviewLabel[review]}
+                          </span>
+                        </div>
+                        <h3 className="mt-3 break-words text-lg font-extrabold text-slate-50 light:text-slate-950">{entry.name}</h3>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-400">
+                          <span className="inline-flex items-center gap-2">
+                            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: category?.color ?? '#FB7185' }} />
+                            {category?.name ?? 'Ohne Kategorie'}
+                          </span>
+                          {account ? <span>· {account.name}</span> : null}
+                          {entry.paymentMethod ? <span>· {entry.paymentMethod}</span> : null}
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-2xl font-extrabold text-rose-200">{formatMoney(activeAmount)}</p>
+                        {hasAdjustedAmount ? <p className="mt-1 text-xs text-slate-500">Basis {formatMoney(entry.amount)}</p> : null}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {(entry.tags ?? []).length ? (
+                        (entry.tags ?? []).slice(0, 5).map((tagId) => {
+                          const tag = state.tags.find((item) => item.id === tagId);
+                          return tag ? (
+                            <span key={tag.id} className="rounded-full px-2.5 py-1 text-xs font-bold text-slate-950" style={{ backgroundColor: tag.color }}>
+                              {tag.name}
                             </span>
-                          </td>
-                          <td>{recurrenceText(entry)}</td>
-                          <td className="text-right">
-                            <p className="font-bold">{formatMoney(activeAmount)}</p>
-                            {hasAdjustedAmount ? (
-                              <p className="text-xs text-slate-500">Basis {formatMoney(entry.amount)}</p>
-                            ) : null}
-                          </td>
-                          <td className="text-right">
-                            <button className="btn mr-2 py-1.5" type="button" onClick={() => edit(entry)}>
-                              Bearbeiten
-                            </button>
-                            <button className="btn btn-danger py-1.5" type="button" onClick={() => remove(entry.id)}>
-                              Löschen
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
+                          ) : null;
+                        })
+                      ) : (
+                        <span className="rounded-full border border-dashed border-white/15 px-2.5 py-1 text-xs text-slate-500 light:border-slate-300">Keine Tags</span>
+                      )}
+                    </div>
+
+                    {adjustmentCount ? (
+                      <p className="mt-3 rounded-lg border border-forge-cyan/15 bg-forge-cyan/[0.06] px-3 py-2 text-xs leading-5 text-slate-300 light:text-slate-700">
+                        {adjustmentCount} Abo-Anpassung{adjustmentCount === 1 ? '' : 'en'} hinterlegt.
+                      </p>
+                    ) : null}
+
+                    <div className="mt-4 flex flex-wrap justify-end gap-2">
+                      <button className="btn py-1.5" type="button" onClick={() => edit(entry)}>
+                        Bearbeiten
+                      </button>
+                      <button className="btn btn-danger py-1.5" type="button" onClick={() => remove(entry.id)}>
+                        Löschen
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           ) : (
             <EmptyState icon="expenses" title="Keine Ausgaben">

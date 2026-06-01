@@ -51,6 +51,10 @@ export const IncomeView = ({ state, setState, selectedMonth, notify }: ViewProps
     () => state.tags.filter((tag) => tag.type === 'income' || tag.type === 'general'),
     [state.tags],
   );
+  const sortedIncomeEntries = useMemo(
+    () => [...state.incomeEntries].sort((a, b) => b.date.localeCompare(a.date)),
+    [state.incomeEntries],
+  );
   const selectedAccount = state.accounts.find((account) => account.id === form.accountId);
   const isBeforeAccountSnapshot = Boolean(selectedAccount && form.date <= selectedAccount.openingDate);
 
@@ -318,55 +322,67 @@ export const IncomeView = ({ state, setState, selectedMonth, notify }: ViewProps
       </Card>
 
       <Card>
-        <SectionHeader title="Einnahmenliste" />
-        {state.incomeEntries.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="text-xs uppercase tracking-[0.08em] text-slate-400">
-                <tr>
-                  <th className="py-2">Datum</th>
-                  <th>Name</th>
-                  <th>Kategorie</th>
-                  <th>Tags</th>
-                  <th>Wiederholung</th>
-                  <th className="text-right">Betrag</th>
-                  <th className="text-right">Aktionen</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/10 light:divide-slate-200">
-                {[...state.incomeEntries]
-                  .sort((a, b) => b.date.localeCompare(a.date))
-                  .map((entry) => (
-                    <tr key={entry.id}>
-                      <td className="py-4 text-slate-400">{formatDate(entry.date)}</td>
-                      <td className="font-semibold">{entry.name}</td>
-                      <td>{entry.category}</td>
-                      <td>
-                        <div className="flex flex-wrap gap-1">
-                          {(entry.tags ?? []).slice(0, 3).map((tagId) => {
-                            const tag = state.tags.find((item) => item.id === tagId);
-                            return tag ? (
-                              <span key={tag.id} className="rounded-full px-2 py-0.5 text-xs font-semibold text-slate-950" style={{ backgroundColor: tag.color }}>
-                                {tag.name}
-                              </span>
-                            ) : null;
-                          })}
-                        </div>
-                      </td>
-                      <td>{recurrenceText(entry)}</td>
-                      <td className="text-right font-bold">{formatMoney(entry.amount)}</td>
-                      <td className="text-right">
-                        <button className="btn mr-2 py-1.5" type="button" onClick={() => edit(entry)}>
-                          Bearbeiten
-                        </button>
-                        <button className="btn btn-danger py-1.5" type="button" onClick={() => remove(entry.id)}>
-                          Löschen
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
+        <SectionHeader
+          title="Einnahmenliste"
+          description="Klarere Kartenansicht mit Betrag, Konto, Wiederholung und Tags."
+          action={<span className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-bold text-slate-300 light:border-slate-200 light:text-slate-600">{sortedIncomeEntries.length} Einträge</span>}
+        />
+        {sortedIncomeEntries.length ? (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {sortedIncomeEntries.map((entry) => {
+              const account = state.accounts.find((item) => item.id === entry.accountId);
+              const category = incomeCategories.find((item) => item.name === entry.category);
+              return (
+                <article key={entry.id} className="rounded-xl border border-white/10 bg-white/[0.035] p-4 transition hover:border-forge-mint/35 light:border-slate-200 light:bg-slate-50">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-forge-mint/25 bg-forge-mint/10 px-2.5 py-1 text-xs font-bold text-forge-mint">
+                          {formatDate(entry.date)}
+                        </span>
+                        <span className="rounded-full border border-white/10 px-2.5 py-1 text-xs font-semibold text-slate-400 light:border-slate-200">
+                          {recurrenceText(entry)}
+                        </span>
+                      </div>
+                      <h3 className="mt-3 break-words text-lg font-extrabold text-slate-50 light:text-slate-950">{entry.name}</h3>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-400">
+                        <span className="inline-flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: category?.color ?? '#47D7AC' }} />
+                          {entry.category}
+                        </span>
+                        {account ? <span>· {account.name}</span> : null}
+                        {entry.source ? <span>· {entry.source}</span> : null}
+                      </div>
+                    </div>
+                    <p className="shrink-0 text-right text-2xl font-extrabold text-forge-mint">{formatMoney(entry.amount)}</p>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {(entry.tags ?? []).length ? (
+                      (entry.tags ?? []).slice(0, 5).map((tagId) => {
+                        const tag = state.tags.find((item) => item.id === tagId);
+                        return tag ? (
+                          <span key={tag.id} className="rounded-full px-2.5 py-1 text-xs font-bold text-slate-950" style={{ backgroundColor: tag.color }}>
+                            {tag.name}
+                          </span>
+                        ) : null;
+                      })
+                    ) : (
+                      <span className="rounded-full border border-dashed border-white/15 px-2.5 py-1 text-xs text-slate-500 light:border-slate-300">Keine Tags</span>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap justify-end gap-2">
+                    <button className="btn py-1.5" type="button" onClick={() => edit(entry)}>
+                      Bearbeiten
+                    </button>
+                    <button className="btn btn-danger py-1.5" type="button" onClick={() => remove(entry.id)}>
+                      Löschen
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : (
           <EmptyState icon="income" title="Keine Einnahmen">
