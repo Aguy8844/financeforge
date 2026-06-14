@@ -10,7 +10,10 @@ if (-not (Test-Path $releaseDir)) {
 Push-Location $root
 try {
   npm.cmd run build:de
+  if ($LASTEXITCODE -ne 0) { throw "German build failed with exit code $LASTEXITCODE." }
+
   npm.cmd run build:en
+  if ($LASTEXITCODE -ne 0) { throw "English build failed with exit code $LASTEXITCODE." }
 
   Copy-Item -Path "README.md" -Destination "dist-de\README.md" -Force
   Copy-Item -Path "README.en.md" -Destination "dist-en\README.md" -Force

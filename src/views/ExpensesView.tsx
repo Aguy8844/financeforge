@@ -17,9 +17,22 @@ import { addMonths, daysInMonth, defaultEntryDateForMonth, formatDate } from '..
 import { formatMoney, parseMoneyInput } from '../lib/format';
 import type { ExpenseEntry, ExpenseReview, RecurrenceFrequency } from '../types';
 import { Card, EmptyState, SectionHeader, StatCard } from '../components/ui';
+import { FinanceIcon } from '../components/Icons';
 import type { ViewProps } from './types';
 
 type RepeatMode = 'once' | 'monthly' | 'custom';
+
+type BulkExpenseRow = {
+  id: string;
+  date: string;
+  name: string;
+  amount: string;
+  categoryId: string;
+  accountId: string;
+  tagId: string;
+  paymentMethod: string;
+  review: ExpenseReview;
+};
 
 const emptyForm = (selectedMonth: string, firstCategoryId: string) => ({
   date: defaultEntryDateForMonth(selectedMonth),
@@ -45,6 +58,21 @@ const emptySubscriptionUpdate = (selectedMonth: string) => ({
   effectiveMonth: selectedMonth,
   note: '',
 });
+
+const createBulkExpenseRow = (selectedMonth: string, categoryId: string): BulkExpenseRow => ({
+  id: createId('bulk-expense'),
+  date: defaultEntryDateForMonth(selectedMonth),
+  name: '',
+  amount: '',
+  categoryId,
+  accountId: 'account-private',
+  tagId: '',
+  paymentMethod: '',
+  review: 'ok',
+});
+
+const createBulkExpenseRows = (selectedMonth: string, categoryId: string, count = 4) =>
+  Array.from({ length: count }, () => createBulkExpenseRow(selectedMonth, categoryId));
 
 const recurrenceText = (entry: ExpenseEntry) => {
   if (entry.type === 'one-time') return 'Einmalig';
@@ -75,6 +103,8 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
   const [form, setForm] = useState(emptyForm(selectedMonth, firstCategoryId));
   const [editingId, setEditingId] = useState<string | null>(null);
   const [subscriptionUpdate, setSubscriptionUpdate] = useState(emptySubscriptionUpdate(selectedMonth));
+  const [bulkRows, setBulkRows] = useState(() => createBulkExpenseRows(selectedMonth, firstCategoryId));
+  const [bulkErrors, setBulkErrors] = useState<Record<string, string>>({});
   const summary = getMonthlySummary(state, selectedMonth);
   const accountBalances = getAccountBalances(state);
   const privateBalance = accountBalances.find((account) => account.accountId === 'account-private')?.balance ?? 0;
@@ -116,6 +146,8 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
   );
   const selectedSubscriptionId = subscriptionUpdate.entryId || recurringExpenses[0]?.id || '';
   const selectedSubscription = recurringExpenses.find((entry) => entry.id === selectedSubscriptionId);
+  const bulkFilledRows = bulkRows.filter((row) => row.name.trim() || row.amount.trim());
+  const bulkTotal = bulkFilledRows.reduce((sum, row) => sum + Math.max(0, parseMoneyInput(row.amount)), 0);
 
   useEffect(() => {
     if (!subscriptionUpdate.entryId && recurringExpenses[0]) {
@@ -241,6 +273,99 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
     }));
     notify('Abo-Betrag ab Monat angepasst.');
     setSubscriptionUpdate((current) => ({ ...current, amount: '', note: '' }));
+  };
+
+  const updateBulkRow = <Key extends keyof BulkExpenseRow>(
+    id: string,
+    key: Key,
+    value: BulkExpenseRow[Key],
+  ) => {
+    setBulkRows((current) =>
+      current.map((row) => (row.id === id ? { ...row, [key]: value } : row)),
+    );
+    setBulkErrors((current) => {
+      if (!current[id]) return current;
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const addBulkRows = (count = 1) => {
+    setBulkRows((current) => [
+      ...current,
+      ...createBulkExpenseRows(selectedMonth, firstCategoryId, count),
+    ]);
+  };
+
+  const removeBulkRow = (id: string) => {
+    setBulkRows((current) => {
+      const remaining = current.filter((row) => row.id !== id);
+      return remaining.length ? remaining : [createBulkExpenseRow(selectedMonth, firstCategoryId)];
+    });
+    setBulkErrors((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const resetBulkRows = () => {
+    setBulkRows(createBulkExpenseRows(selectedMonth, firstCategoryId));
+    setBulkErrors({});
+  };
+
+  const saveBulkExpenses = (event: FormEvent) => {
+    event.preventDefault();
+    const rowsToSave = bulkRows.filter((row) => row.name.trim() || row.amount.trim());
+    if (!rowsToSave.length) {
+      notify('Trage mindestens eine Bulk-Ausgabe ein.');
+      return;
+    }
+
+    const errors = rowsToSave.reduce<Record<string, string>>((acc, row) => {
+      const amount = parseMoneyInput(row.amount);
+      const missing: string[] = [];
+      if (!row.date) missing.push('Datum');
+      if (!row.name.trim()) missing.push('Beschreibung');
+      if (amount <= 0) missing.push('Betrag');
+      if (!row.categoryId) missing.push('Kategorie');
+      if (missing.length) acc[row.id] = `${missing.join(', ')} prüfen`;
+      return acc;
+    }, {});
+
+    if (Object.keys(errors).length) {
+      setBulkErrors(errors);
+      notify(`${Object.keys(errors).length} Bulk-Zeile(n) prüfen.`);
+      return;
+    }
+
+    const entries: ExpenseEntry[] = rowsToSave.map((row) => {
+      const account = state.accounts.find((item) => item.id === row.accountId);
+      const tags = Array.from(
+        new Set([row.tagId, account?.tagId].filter((tagId): tagId is string => Boolean(tagId))),
+      );
+      return {
+        id: createId('expense'),
+        date: row.date,
+        name: row.name.trim(),
+        amount: parseMoneyInput(row.amount),
+        categoryId: row.categoryId,
+        accountId: row.accountId || undefined,
+        tags,
+        paymentMethod: row.paymentMethod.trim() || undefined,
+        type: 'one-time',
+        review: row.review,
+        active: true,
+      };
+    });
+
+    setState((current) => ({
+      ...current,
+      expenseEntries: [...current.expenseEntries, ...entries],
+    }));
+    notify(`${entries.length} Ausgaben gesammelt gespeichert.`);
+    resetBulkRows();
   };
 
   const toggleTag = (tagId: string) => {
@@ -531,6 +656,173 @@ export const ExpensesView = ({ state, setState, selectedMonth, notify }: ViewPro
       </Card>
 
       <div className="grid gap-6">
+        <Card className="overflow-hidden">
+          <SectionHeader
+            title="Bulk-Ausgaben"
+            description="Mehrere einmalige Ausgaben wie in einer kleinen Tabelle vorbereiten und gemeinsam speichern."
+            action={(
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-bold text-slate-300 light:border-slate-200 light:text-slate-600">
+                  {bulkFilledRows.length} vorbereitet
+                </span>
+                <span className="rounded-full border border-rose-300/20 bg-rose-300/10 px-3 py-1.5 text-xs font-bold text-rose-200">
+                  {formatMoney(bulkTotal)}
+                </span>
+              </div>
+            )}
+          />
+          <form onSubmit={saveBulkExpenses}>
+            <div className="-mx-5 overflow-x-auto px-5 sm:-mx-6 sm:px-6">
+              <table className="w-full min-w-[1180px] border-separate border-spacing-y-2 text-left text-sm">
+                <thead className="text-xs uppercase tracking-[0.08em] text-slate-500">
+                  <tr>
+                    <th className="w-10 px-2">#</th>
+                    <th className="w-36 px-2">Datum</th>
+                    <th className="min-w-56 px-2">Beschreibung</th>
+                    <th className="w-32 px-2">Betrag</th>
+                    <th className="w-44 px-2">Kategorie</th>
+                    <th className="w-40 px-2">Konto</th>
+                    <th className="w-40 px-2">Tag</th>
+                    <th className="w-36 px-2">Zahlung</th>
+                    <th className="w-36 px-2">Bewertung</th>
+                    <th className="w-12 px-2"><span className="sr-only">Aktionen</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bulkRows.map((row, index) => {
+                    const hasError = Boolean(bulkErrors[row.id]);
+                    return (
+                      <tr
+                        key={row.id}
+                        className={hasError ? 'bg-rose-400/[0.07]' : 'bg-white/[0.025] light:bg-slate-50'}
+                      >
+                        <td className="rounded-l-xl border-y border-l border-white/10 px-3 py-2 font-bold text-slate-500 light:border-slate-200">
+                          {index + 1}
+                        </td>
+                        <td className="border-y border-white/10 px-2 py-2 light:border-slate-200">
+                          <input
+                            className="field py-2"
+                            type="date"
+                            value={row.date}
+                            onChange={(event) => updateBulkRow(row.id, 'date', event.target.value)}
+                          />
+                        </td>
+                        <td className="border-y border-white/10 px-2 py-2 light:border-slate-200">
+                          <input
+                            className="field py-2"
+                            value={row.name}
+                            onChange={(event) => updateBulkRow(row.id, 'name', event.target.value)}
+                            placeholder="z. B. Billa"
+                          />
+                          {hasError ? <p className="mt-1 text-xs font-semibold text-rose-300">{bulkErrors[row.id]}</p> : null}
+                        </td>
+                        <td className="border-y border-white/10 px-2 py-2 light:border-slate-200">
+                          <input
+                            className="field py-2 text-right font-bold"
+                            inputMode="decimal"
+                            value={row.amount}
+                            onChange={(event) => updateBulkRow(row.id, 'amount', event.target.value)}
+                            placeholder="0,00"
+                          />
+                        </td>
+                        <td className="border-y border-white/10 px-2 py-2 light:border-slate-200">
+                          <select
+                            className="field py-2"
+                            value={row.categoryId}
+                            onChange={(event) => updateBulkRow(row.id, 'categoryId', event.target.value)}
+                          >
+                            {expenseCategories.map((category) => (
+                              <option key={category.id} value={category.id}>{category.name}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="border-y border-white/10 px-2 py-2 light:border-slate-200">
+                          <select
+                            className="field py-2"
+                            value={row.accountId}
+                            onChange={(event) => updateBulkRow(row.id, 'accountId', event.target.value)}
+                          >
+                            <option value="">Kein Konto</option>
+                            {state.accounts.map((account) => (
+                              <option key={account.id} value={account.id}>{account.name}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="border-y border-white/10 px-2 py-2 light:border-slate-200">
+                          <select
+                            className="field py-2"
+                            value={row.tagId}
+                            onChange={(event) => updateBulkRow(row.id, 'tagId', event.target.value)}
+                          >
+                            <option value="">Kein Tag</option>
+                            {quickTags.map((tag) => (
+                              <option key={tag.id} value={tag.id}>{tag.name}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="border-y border-white/10 px-2 py-2 light:border-slate-200">
+                          <input
+                            className="field py-2"
+                            value={row.paymentMethod}
+                            onChange={(event) => updateBulkRow(row.id, 'paymentMethod', event.target.value)}
+                            placeholder="Karte"
+                          />
+                        </td>
+                        <td className="border-y border-white/10 px-2 py-2 light:border-slate-200">
+                          <select
+                            className="field py-2"
+                            value={row.review}
+                            onChange={(event) => updateBulkRow(row.id, 'review', event.target.value as ExpenseReview)}
+                          >
+                            <option value="necessary">notwendig</option>
+                            <option value="ok">okay</option>
+                            <option value="unnecessary">unnötig</option>
+                          </select>
+                        </td>
+                        <td className="rounded-r-xl border-y border-r border-white/10 px-2 py-2 light:border-slate-200">
+                          <button
+                            className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 text-slate-400 transition hover:border-rose-300/40 hover:bg-rose-300/10 hover:text-rose-200 light:border-slate-200"
+                            type="button"
+                            title="Zeile entfernen"
+                            aria-label="Zeile entfernen"
+                            onClick={() => removeBulkRow(row.id)}
+                          >
+                            <FinanceIcon name="trash" size={17} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="mt-4 text-xs leading-5 text-slate-500">
+              Wie bei Einzelbuchungen gilt: Ausgaben am oder vor dem Snapshot-Datum eines Kontos erscheinen in Statistiken,
+              verändern den heutigen Kontostand aber nicht.
+            </p>
+
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 light:border-slate-200">
+              <div className="flex flex-wrap gap-2">
+                <button className="btn inline-flex items-center gap-2" type="button" onClick={() => addBulkRows()}>
+                  <FinanceIcon name="plus-circle" size={17} />
+                  Zeile hinzufügen
+                </button>
+                <button className="btn" type="button" onClick={() => addBulkRows(5)}>
+                  + 5 Zeilen
+                </button>
+                <button className="btn" type="button" onClick={resetBulkRows}>
+                  Tabelle leeren
+                </button>
+              </div>
+              <button className="btn btn-primary inline-flex items-center gap-2" type="submit">
+                <FinanceIcon name="upload" size={17} />
+                Alle Ausgaben speichern
+              </button>
+            </div>
+          </form>
+        </Card>
+
         <Card>
           <SectionHeader title={editingId ? 'Ausgabe bearbeiten' : 'Ausgabe erfassen'} />
           <form className="space-y-5" onSubmit={submit}>

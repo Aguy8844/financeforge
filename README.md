@@ -101,6 +101,7 @@ Die Demo im Web nutzt nur fiktive Daten. Sie ist nicht mit deinen lokalen Financ
 - Dashboard mit Monatszahlen, Warnungen und Charts
 - Einnahmenverwaltung
 - Ausgabenverwaltung
+- Bulk-Erfassung für mehrere einmalige Ausgaben in einer Tabelle
 - Budgets mit Warnstufen
 - Sparziele mit Prioritäten und Ziel-Fortschritt
 - mehrere Vermögenskonten

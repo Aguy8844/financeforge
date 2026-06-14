@@ -95,6 +95,7 @@ The web demo uses fictional data only. It is not connected to your local Finance
 - dashboard with monthly numbers, warnings and charts
 - income management
 - expense management
+- bulk table for entering multiple one-time expenses at once
 - budgets with warning levels
 - savings goals with priorities and progress
 - multiple asset accounts
